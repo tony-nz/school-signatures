@@ -41,12 +41,14 @@ const store = useSignatureStore()
 
 <style scoped>
 .field { @apply flex flex-col gap-1; }
-.field label { @apply text-xs font-medium text-gray-500; }
+.field label { @apply text-xs font-medium text-gray-500 dark:text-slate-400; }
 .input {
   @apply w-full rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-sm text-gray-800
-    placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition;
+    placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition
+    dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-600;
 }
 .color-swatch {
-  @apply w-8 h-8 rounded-lg border border-gray-200 cursor-pointer p-0.5 flex-shrink-0;
+  @apply w-8 h-8 rounded-lg border border-gray-200 cursor-pointer p-0.5 flex-shrink-0
+    dark:border-slate-600;
 }
 </style>

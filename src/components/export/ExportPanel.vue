@@ -53,7 +53,7 @@ function onImportFile(e: Event) {
   <div class="flex flex-col gap-2">
     <!-- Row 1: title + settings actions top-right -->
     <div class="flex items-center justify-between">
-      <span class="text-xs font-semibold uppercase tracking-wide text-slate-400"
+      <span class="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500"
         >Export</span
       >
       <div class="flex items-center gap-1">
@@ -85,7 +85,7 @@ function onImportFile(e: Event) {
         </transition>
         <!-- Settings icon buttons -->
         <div
-          class="flex items-center border border-slate-200 rounded-lg overflow-hidden bg-white divide-x divide-slate-200"
+          class="flex items-center border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden bg-white dark:bg-slate-800 divide-x divide-slate-200 dark:divide-slate-700"
         >
           <button
             @click="handle(store.exportSettings, 'Exported!')"
@@ -183,12 +183,12 @@ function onImportFile(e: Event) {
       </button>
 
       <!-- Divider pip -->
-      <span class="text-slate-200 select-none">|</span>
+      <span class="text-slate-200 dark:text-slate-700 select-none">|</span>
 
       <!-- Preset inline -->
       <select
         v-model="selectedPresetId"
-        class="text-xs border border-slate-200 rounded-lg px-2 py-1.5 text-slate-500 bg-white focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-300 transition"
+        class="text-xs border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-300 transition"
       >
         <option value="" disabled>Preset…</option>
         <option v-for="p in presets" :key="p.id" :value="p.id">
@@ -268,11 +268,12 @@ const steps = [
 <style scoped>
 .export-btn {
   @apply flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-medium
-    text-slate-600 bg-white transition-all cursor-pointer;
+    text-slate-600 bg-white transition-all cursor-pointer
+    dark:border-slate-700 dark:text-slate-300 dark:bg-slate-800;
 }
 
 .icon-btn {
-  @apply flex items-center justify-center w-7 h-7 text-slate-500 transition-all cursor-pointer;
+  @apply flex items-center justify-center w-7 h-7 text-slate-500 dark:text-slate-400 transition-all cursor-pointer;
 }
 
 .fade-enter-active,

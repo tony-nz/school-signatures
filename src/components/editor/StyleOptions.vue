@@ -131,20 +131,23 @@ const socialStyles: { value: SocialStyle; label: string }[] = [
 
 <style scoped>
 .field { @apply flex flex-col gap-1.5; }
-.field label { @apply text-xs font-medium text-slate-500; }
+.field label { @apply text-xs font-medium text-slate-500 dark:text-slate-400; }
 .select {
   @apply w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-800
-    focus:outline-none focus:ring-2 focus:ring-indigo-400 cursor-pointer;
+    focus:outline-none focus:ring-2 focus:ring-indigo-400 cursor-pointer
+    dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100;
 }
 .btn-group {
-  @apply inline-flex self-start rounded-lg border border-slate-200 overflow-hidden;
+  @apply inline-flex self-start rounded-lg border border-slate-200 overflow-hidden
+    dark:border-slate-700;
 }
 .seg-btn {
   @apply px-3 py-1.5 text-xs font-medium text-slate-500 bg-white hover:bg-slate-50 transition cursor-pointer
-    border-r border-slate-200 last:border-r-0;
+    border-r border-slate-200 last:border-r-0
+    dark:text-slate-400 dark:bg-slate-800 dark:hover:bg-slate-700 dark:border-slate-700;
 }
 .seg-btn.active {
-  @apply bg-indigo-600 text-white;
+  @apply bg-indigo-600 text-white dark:bg-indigo-600 dark:text-white;
 }
 .custom-row {
   @apply flex items-center gap-2 mt-0.5;
@@ -152,7 +155,8 @@ const socialStyles: { value: SocialStyle; label: string }[] = [
 .custom-num {
   @apply w-20 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-800
     focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition
-    [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none;
+    [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none
+    dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100;
 }
 .unit {
   @apply text-xs text-slate-400;

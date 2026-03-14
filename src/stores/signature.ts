@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { reactive, ref, computed, watch } from 'vue'
 import type { SignatureData } from '../types'
 import { templates } from '../templates'
+import { presets } from '../presets'
 
 const STORAGE_KEY = 'signature-generator'
 
@@ -47,23 +48,39 @@ const defaults: SignatureData = {
   },
 }
 
+function mergeWithDefaults(d: SignatureData, templateId: string) {
+  return {
+    data: {
+      ...defaults,
+      ...d,
+      socials: { ...defaults.socials, ...d?.socials },
+      cta: { ...defaults.cta, ...d?.cta },
+      style: { ...defaults.style, ...d?.style },
+      visibility: { ...defaults.visibility, ...d?.visibility },
+      fieldColors: { ...defaults.fieldColors, ...d?.fieldColors },
+    },
+    templateId: templateId ?? 'modern',
+  }
+}
+
 function loadSaved(): { data: SignatureData; templateId: string } {
+  try {
+    // URL preset param takes priority over localStorage
+    const presetId = new URLSearchParams(window.location.search).get('preset')
+    if (presetId) {
+      const preset = presets.find((p) => p.id === presetId)
+      if (preset) {
+        const parsed = JSON.parse(preset.payload)
+        return mergeWithDefaults(parsed.data, parsed.templateId)
+      }
+    }
+  } catch { /* ignore */ }
+
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return { data: { ...defaults }, templateId: 'modern' }
     const saved = JSON.parse(raw)
-    return {
-      data: {
-        ...defaults,
-        ...saved.data,
-        socials: { ...defaults.socials, ...saved.data?.socials },
-        cta: { ...defaults.cta, ...saved.data?.cta },
-        style: { ...defaults.style, ...saved.data?.style },
-        visibility: { ...defaults.visibility, ...saved.data?.visibility },
-        fieldColors: { ...defaults.fieldColors, ...saved.data?.fieldColors },
-      },
-      templateId: saved.templateId ?? 'modern',
-    }
+    return mergeWithDefaults(saved.data, saved.templateId)
   } catch {
     return { data: { ...defaults }, templateId: 'modern' }
   }

@@ -30,7 +30,7 @@ function toggle(key: keyof typeof open.value) {
   <div class="flex-1 overflow-y-auto flex flex-col">
 
     <!-- ── Personal ──────────────────────────────────────────────── -->
-    <section class="border-b border-slate-100">
+    <section class="border-b border-slate-100 dark:border-slate-800">
       <button @click="toggle('personal')" class="section-header" :class="{ 'text-indigo-600': open.personal }">
         <div class="flex items-center gap-2">
           <svg class="w-4 h-4 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
@@ -48,7 +48,7 @@ function toggle(key: keyof typeof open.value) {
           <span class="label">Photo</span>
           <ToggleSwitch v-model="store.data.visibility.avatar" />
         </div>
-        <div v-if="store.data.visibility.avatar" class="mt-1 p-3 bg-slate-50 rounded-lg border border-slate-100">
+        <div v-if="store.data.visibility.avatar" class="mt-1 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-100 dark:border-slate-800">
           <AvatarUpload field="avatar" />
         </div>
 
@@ -71,7 +71,7 @@ function toggle(key: keyof typeof open.value) {
     </section>
 
     <!-- ── Company ──────────────────────────────────────────────── -->
-    <section class="border-b border-slate-100">
+    <section class="border-b border-slate-100 dark:border-slate-800">
       <button @click="toggle('company')" class="section-header" :class="{ 'text-indigo-600': open.company }">
         <div class="flex items-center gap-2">
           <svg class="w-4 h-4 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
@@ -89,7 +89,7 @@ function toggle(key: keyof typeof open.value) {
           <span class="label">Logo</span>
           <ToggleSwitch v-model="store.data.visibility.logo" />
         </div>
-        <div v-if="store.data.visibility.logo" class="mt-1 mb-1 p-3 bg-slate-50 rounded-lg border border-slate-100">
+        <div v-if="store.data.visibility.logo" class="mt-1 mb-1 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-100 dark:border-slate-800">
           <AvatarUpload field="logo" />
         </div>
 
@@ -108,7 +108,7 @@ function toggle(key: keyof typeof open.value) {
     </section>
 
     <!-- ── Contact ──────────────────────────────────────────────── -->
-    <section class="border-b border-slate-100">
+    <section class="border-b border-slate-100 dark:border-slate-800">
       <button @click="toggle('contact')" class="section-header" :class="{ 'text-indigo-600': open.contact }">
         <div class="flex items-center gap-2">
           <svg class="w-4 h-4 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
@@ -143,7 +143,7 @@ function toggle(key: keyof typeof open.value) {
     </section>
 
     <!-- ── Social Links ─────────────────────────────────────────── -->
-    <section class="border-b border-slate-100">
+    <section class="border-b border-slate-100 dark:border-slate-800">
       <div @click="toggle('socials')" class="section-header" :class="{ 'text-indigo-600': open.socials }" role="button" tabindex="0">
         <div class="flex items-center gap-2">
           <svg class="w-4 h-4 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
@@ -169,7 +169,7 @@ function toggle(key: keyof typeof open.value) {
     </section>
 
     <!-- ── Extras ───────────────────────────────────────────────── -->
-    <section class="border-b border-slate-100">
+    <section class="border-b border-slate-100 dark:border-slate-800">
       <button @click="toggle('extras')" class="section-header" :class="{ 'text-indigo-600': open.extras }">
         <div class="flex items-center gap-2">
           <svg class="w-4 h-4 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
@@ -209,7 +209,7 @@ function toggle(key: keyof typeof open.value) {
     </section>
 
     <!-- ── CTA Button ───────────────────────────────────────────── -->
-    <section class="border-b border-slate-100">
+    <section class="border-b border-slate-100 dark:border-slate-800">
       <div @click="toggle('cta')" class="section-header" :class="{ 'text-indigo-600': open.cta }" role="button" tabindex="0">
         <div class="flex items-center gap-2">
           <svg class="w-4 h-4 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
@@ -230,7 +230,7 @@ function toggle(key: keyof typeof open.value) {
     </section>
 
     <!-- ── Field Colors ─────────────────────────────────────────── -->
-    <section class="border-b border-slate-100">
+    <section class="border-b border-slate-100 dark:border-slate-800">
       <button @click="toggle('fieldColors')" class="section-header" :class="{ 'text-indigo-600': open.fieldColors }">
         <div class="flex items-center gap-2">
           <svg class="w-4 h-4 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
@@ -253,7 +253,7 @@ function toggle(key: keyof typeof open.value) {
             <label>{{ label }}</label>
             <div class="flex items-center gap-2">
               <input type="color" v-model="(store.data.fieldColors as any)[key]"
-                class="w-7 h-7 rounded-md border border-slate-200 cursor-pointer p-0.5 bg-white" />
+                class="w-7 h-7 rounded-md border border-slate-200 dark:border-slate-600 cursor-pointer p-0.5 bg-white dark:bg-slate-700" />
               <span class="text-xs font-mono text-slate-400">{{ (store.data.fieldColors as any)[key] }}</span>
             </div>
           </div>
@@ -262,7 +262,7 @@ function toggle(key: keyof typeof open.value) {
     </section>
 
     <!-- ── Style Options ────────────────────────────────────────── -->
-    <section class="border-b border-slate-100">
+    <section class="border-b border-slate-100 dark:border-slate-800">
       <button @click="toggle('style')" class="section-header" :class="{ 'text-indigo-600': open.style }">
         <div class="flex items-center gap-2">
           <svg class="w-4 h-4 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
@@ -282,12 +282,12 @@ function toggle(key: keyof typeof open.value) {
   </div>
 
     <!-- ── Accent Color (sticky bottom) ─────────────────────────── -->
-    <section class="flex-shrink-0 border-t border-slate-200 px-4 py-3 bg-white">
+    <section class="flex-shrink-0 border-t border-slate-200 dark:border-slate-700 px-4 py-3 bg-white dark:bg-slate-900">
       <div class="flex items-center gap-2 mb-3">
         <svg class="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
           <path stroke-linecap="round" stroke-linejoin="round" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/>
         </svg>
-        <span class="text-sm font-semibold text-slate-600">Accent Color</span>
+        <span class="text-sm font-semibold text-slate-600 dark:text-slate-300">Accent Color</span>
       </div>
       <ColorCustomizer />
     </section>
@@ -298,7 +298,8 @@ function toggle(key: keyof typeof open.value) {
 <style scoped>
 .section-header {
   @apply w-full flex items-center justify-between px-4 py-3 text-sm font-semibold text-slate-600
-    cursor-pointer hover:text-indigo-600 hover:bg-indigo-50/50 transition-colors text-left;
+    cursor-pointer hover:text-indigo-600 hover:bg-indigo-50/50 transition-colors text-left
+    dark:text-slate-300 dark:hover:text-indigo-400 dark:hover:bg-indigo-900/20;
 }
 .section-body {
   @apply flex flex-col gap-2.5 px-4 pb-4;
@@ -307,16 +308,18 @@ function toggle(key: keyof typeof open.value) {
   @apply w-4 h-4 text-current transition-transform duration-150 flex-shrink-0;
 }
 .feature-row {
-  @apply p-3 rounded-lg bg-slate-50 border border-slate-100;
+  @apply p-3 rounded-lg bg-slate-50 border border-slate-100 dark:border-slate-800
+    dark:bg-slate-800/50;
 }
 .field {
   @apply flex flex-col gap-1;
 }
 .field label, .label {
-  @apply text-xs font-medium text-slate-500;
+  @apply text-xs font-medium text-slate-500 dark:text-slate-400;
 }
 .input {
   @apply w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-800
-    placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition;
+    placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition
+    dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-600;
 }
 </style>

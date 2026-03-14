@@ -37,11 +37,11 @@ function clear() {
 
 <template>
   <div class="flex flex-col gap-1.5">
-    <label class="text-xs font-medium text-gray-500">{{ label }}</label>
+    <label class="text-xs font-medium text-gray-500 dark:text-slate-400">{{ label }}</label>
 
     <div class="flex items-center gap-2">
       <!-- Thumbnail -->
-      <div class="w-9 h-9 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center overflow-hidden flex-shrink-0">
+      <div class="w-9 h-9 rounded-lg bg-gray-100 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 flex items-center justify-center overflow-hidden flex-shrink-0">
         <img v-if="current()" :src="current()" class="w-full h-full object-contain" :alt="label" />
         <span v-else class="text-gray-300 text-lg">+</span>
       </div>
@@ -62,7 +62,7 @@ function clear() {
           autofocus
           @keydown.enter="applyUrl"
           @keydown.esc="showUrlInput = false"
-          class="flex-1 min-w-0 text-xs rounded-lg border border-gray-200 px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent"
+          class="flex-1 min-w-0 text-xs rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent"
         />
         <button @click="applyUrl" class="action-btn bg-indigo-600 text-white border-indigo-600 hover:bg-indigo-700">Apply</button>
         <button @click="showUrlInput = false" class="action-btn">Cancel</button>
@@ -75,6 +75,7 @@ function clear() {
 <style scoped>
 .action-btn {
   @apply text-xs px-2.5 py-1 rounded-md border border-gray-200 bg-white hover:bg-gray-50
-    text-gray-600 transition cursor-pointer;
+    text-gray-600 transition cursor-pointer
+    dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300;
 }
 </style>
