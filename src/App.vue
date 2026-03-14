@@ -17,7 +17,7 @@ const savedLabel = computed(() => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col">
+  <div class="h-screen bg-slate-50 dark:bg-slate-950 flex flex-col overflow-hidden">
 
     <!-- Header + Template Picker -->
     <header class="sticky top-0 z-10 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 flex items-center shadow-sm">

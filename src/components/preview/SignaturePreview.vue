@@ -15,7 +15,7 @@ const store = useSignatureStore()
     </div>
 
     <!-- Email chrome mock -->
-    <div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm overflow-hidden flex-1 relative">
+    <div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm overflow-y-auto flex-1 relative">
       <!-- Fake email header -->
       <div class="border-b border-slate-100 dark:border-slate-700 px-4 py-3 bg-slate-50 dark:bg-slate-800">
         <div class="flex items-center gap-1.5 mb-2.5">
