@@ -82,3 +82,16 @@ export interface SignatureTemplate {
 }
 
 export type ExportTarget = 'gmail' | 'macmail' | 'outlook' | 'html'
+
+export interface BulkRow {
+  id: string
+  name: string
+  title: string
+  email: string
+  phone: string
+  mobile: string
+  website: string
+  address: string
+  tagline: string
+  avatar: string
+}

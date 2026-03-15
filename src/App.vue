@@ -1,14 +1,16 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import TemplatePicker from './components/editor/TemplatePicker.vue'
 import FieldEditor from './components/editor/FieldEditor.vue'
 import SignaturePreview from './components/preview/SignaturePreview.vue'
 import ExportPanel from './components/export/ExportPanel.vue'
+import BulkPanel from './components/bulk/BulkPanel.vue'
 import { useSignatureStore } from './stores/signature'
 import { useDarkMode } from './composables/useDarkMode'
 
 const store = useSignatureStore()
 const { isDark, toggle } = useDarkMode()
+const bulkMode = ref(false)
 
 const savedLabel = computed(() => {
   if (!store.lastSaved) return null
@@ -43,6 +45,20 @@ const savedLabel = computed(() => {
             </svg>
             Saved {{ savedLabel }}
           </div>
+          <!-- Bulk mode toggle -->
+          <button
+            @click="bulkMode = !bulkMode"
+            class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all"
+            :class="bulkMode
+              ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800'
+              : 'text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-transparent'"
+            title="Toggle bulk mode"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+            </svg>
+            Bulk
+          </button>
           <!-- Dark mode toggle -->
           <button
             @click="toggle"
@@ -68,15 +84,19 @@ const savedLabel = computed(() => {
         <FieldEditor />
       </aside>
 
-      <!-- Right: Preview + Export -->
+      <!-- Right: Preview + Export / Bulk Panel -->
       <section class="flex-1 flex flex-col overflow-hidden p-5 gap-4 bg-slate-50 dark:bg-slate-950">
-        <div class="flex-1 min-h-0">
-          <SignaturePreview />
-        </div>
-        <div class="flex-shrink-0">
-          <ExportPanel />
-        </div>
-
+        <template v-if="bulkMode">
+          <BulkPanel />
+        </template>
+        <template v-else>
+          <div class="flex-1 min-h-0">
+            <SignaturePreview />
+          </div>
+          <div class="flex-shrink-0">
+            <ExportPanel />
+          </div>
+        </template>
       </section>
 
     </main>

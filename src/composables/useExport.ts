@@ -1,6 +1,6 @@
 import { useSignatureStore } from '../stores/signature'
 
-function generateUUID(): string {
+export function generateUUID(): string {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
     const r = (Math.random() * 16) | 0
     const v = c === 'x' ? r : (r & 0x3) | 0x8
@@ -12,7 +12,7 @@ function generateUUID(): string {
  * Generates the full .mailsignature file content.
  * The body content replaces what Mail.app writes when creating a dummy signature.
  */
-function buildMailsignatureContent(html: string): string {
+export function buildMailsignatureContent(html: string): string {
   const uuid = generateUUID()
   const msgId = `<${uuid}@mailsignature>`
   return [

@@ -78,30 +78,30 @@ function clear() {
       </div>
 
       <!-- Actions -->
-      <div v-if="!showUrlInput" class="flex gap-1.5">
+      <div class="flex gap-1.5 flex-wrap">
         <button @click="inputRef?.click()" class="action-btn">Upload</button>
-        <button @click="showUrlInput = true" class="action-btn">URL</button>
+        <button @click="showUrlInput = !showUrlInput" class="action-btn" :class="{ 'border-indigo-400 text-indigo-600 dark:border-indigo-500 dark:text-indigo-400': showUrlInput }">URL</button>
         <button v-if="current()?.startsWith('http')" @click="convertToBase64" :disabled="converting" class="action-btn" :title="'Embed image as base64 so no external hosting is needed'">
           {{ converting ? 'Converting…' : 'Embed' }}
         </button>
         <button v-if="current()" @click="clear" class="action-btn text-red-400 hover:text-red-600">✕</button>
       </div>
-      <p v-if="convertError" class="text-xs text-red-500">{{ convertError }}</p>
+    </div>
+    <p v-if="convertError" class="text-xs text-red-500">{{ convertError }}</p>
 
-      <!-- URL input (inline) -->
-      <div v-else class="flex gap-1.5 flex-1">
-        <input
-          v-model="urlInput"
-          type="url"
-          placeholder="https://..."
-          autofocus
-          @keydown.enter="applyUrl"
-          @keydown.esc="showUrlInput = false"
-          class="flex-1 min-w-0 text-xs rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent"
-        />
-        <button @click="applyUrl" class="action-btn bg-indigo-600 text-white border-indigo-600 hover:bg-indigo-700">Apply</button>
-        <button @click="showUrlInput = false" class="action-btn">Cancel</button>
-      </div>
+    <!-- URL input (below actions) -->
+    <div v-if="showUrlInput" class="flex gap-1.5">
+      <input
+        v-model="urlInput"
+        type="url"
+        placeholder="https://..."
+        autofocus
+        @keydown.enter="applyUrl"
+        @keydown.esc="showUrlInput = false"
+        class="flex-1 min-w-0 text-xs rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent"
+      />
+      <button @click="applyUrl" class="action-btn bg-indigo-600 text-white border-indigo-600 hover:bg-indigo-700">Apply</button>
+      <button @click="showUrlInput = false" class="action-btn">Cancel</button>
     </div>
     <input ref="inputRef" type="file" accept="image/*" class="hidden" @change="onFileChange" />
   </div>
