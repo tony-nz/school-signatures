@@ -11,8 +11,9 @@ export const config: Config = { path: '/api/*' }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+// `code` lets the client react to a specific error (e.g. offering to continue anyway)
 class HttpError extends Error {
-  constructor(public status: number, message: string) { super(message) }
+  constructor(public status: number, message: string, public code?: string) { super(message) }
 }
 
 const json = (body: unknown, status = 200, headers: Record<string, string> = {}) =>
@@ -108,6 +109,31 @@ function validEmail(value: unknown): string {
   return email
 }
 
+// Company names compare ignoring case and extra whitespace, so " momac " matches "MoMac"
+const normalizedName = (name: string) => name.trim().replace(/\s+/g, ' ').toLowerCase()
+
+// An established company (one with an approved member) whose name matches, other than excludeId
+async function matchingCompany(name: string, excludeId: string | null = null): Promise<{ id: string; name: string } | null> {
+  const rows = await db()`
+    SELECT c.id, c.name FROM companies c
+    WHERE lower(regexp_replace(trim(c.name), '\\s+', ' ', 'g')) = ${normalizedName(name)}
+      AND c.id IS DISTINCT FROM ${excludeId}
+      AND EXISTS (SELECT 1 FROM users u WHERE u.company_id = c.id AND u.status = 'approved')
+    ORDER BY c.created_at LIMIT 1
+  ` as { id: string; name: string }[]
+  return rows[0] ?? null
+}
+
+// Deletes a company left with no members and no saved data (e.g. after its only user was moved elsewhere)
+async function deleteIfEmpty(companyId: string) {
+  await db()`
+    DELETE FROM companies c WHERE c.id = ${companyId}
+      AND NOT EXISTS (SELECT 1 FROM users WHERE company_id = c.id)
+      AND NOT EXISTS (SELECT 1 FROM signatures WHERE company_id = c.id)
+      AND NOT EXISTS (SELECT 1 FROM customers WHERE company_id = c.id)
+  `
+}
+
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
 async function signup(req: Request) {
@@ -116,6 +142,14 @@ async function signup(req: Request) {
   const password = newPassword(body.password)
   const businessName = str(body.businessName)
   if (!businessName) throw new HttpError(400, 'Business name is required')
+
+  // Nudges people to ask their company's owner instead of creating a duplicate; they can still continue
+  if (body.confirmNewCompany !== true) {
+    const match = await matchingCompany(businessName)
+    if (match) {
+      throw new HttpError(409, `${match.name} already has an account here. Ask its owner to add you to their team, or continue and an admin will sort it out.`, 'company_exists')
+    }
+  }
 
   const admin = isBootstrapAdmin(email)
   const user = await createAccount({
@@ -499,12 +533,26 @@ async function listUsers(req: Request) {
     SELECT u.*,
       (SELECT count(*)::int FROM users m WHERE m.company_id = u.company_id) AS member_count,
       (SELECT count(*)::int FROM signatures s WHERE s.company_id = u.company_id) AS signature_count,
-      (SELECT count(*)::int FROM customers c WHERE c.company_id = u.company_id) AS customer_count
-    FROM accounts u ORDER BY lower(u.business_name), u.company_role DESC, u.created_at
-  ` as (UserRow & { member_count: number; signature_count: number; customer_count: number })[]
+      (SELECT count(*)::int FROM customers c WHERE c.company_id = u.company_id) AS customer_count,
+      m.id AS match_company_id, m.name AS match_company_name
+    FROM accounts u
+    -- An established company with the same name: a pending sign-up probably belongs there
+    LEFT JOIN LATERAL (
+      SELECT c.id, c.name FROM companies c
+      WHERE c.id <> u.company_id
+        AND lower(regexp_replace(trim(c.name), '\\s+', ' ', 'g')) = lower(regexp_replace(trim(u.business_name), '\\s+', ' ', 'g'))
+        AND EXISTS (SELECT 1 FROM users a WHERE a.company_id = c.id AND a.status = 'approved')
+      ORDER BY c.created_at LIMIT 1
+    ) m ON true
+    ORDER BY lower(u.business_name), u.company_role DESC, u.created_at
+  ` as (UserRow & {
+    member_count: number; signature_count: number; customer_count: number
+    match_company_id: string | null; match_company_name: string | null
+  })[]
   return json({
     users: rows.map((u) => ({
       ...publicUser(u), memberCount: u.member_count, signatureCount: u.signature_count, customerCount: u.customer_count,
+      matchingCompany: u.match_company_id ? { id: u.match_company_id, name: u.match_company_name } : null,
     })),
   })
 }
@@ -572,6 +620,21 @@ async function updateUser(req: Request, id: string) {
   if (businessName !== user.business_name && companyId === user.company_id) {
     await db()`UPDATE companies SET name = ${businessName}, updated_at = now() WHERE id = ${companyId}`
   }
+  if (companyId !== user.company_id) await deleteIfEmpty(user.company_id)
+  return json({ user: publicUser((await account(id))!) })
+}
+
+// Moves a pending sign-up into an existing company as a member and approves them
+async function approveInto(req: Request, id: string) {
+  await requireAdmin(req)
+  const companyId = await adminCompanyId((await readBody(req)).companyId)
+  const user = await account(id)
+  if (!user) throw new HttpError(404, 'User not found')
+  await db()`
+    UPDATE users SET company_id = ${companyId}, company_role = 'member', status = 'approved', updated_at = now()
+    WHERE id = ${id}
+  `
+  if (companyId !== user.company_id) await deleteIfEmpty(user.company_id)
   return json({ user: publicUser((await account(id))!) })
 }
 
@@ -664,6 +727,7 @@ const routes: [string, RegExp, Handler][] = [
   ['DELETE', new RegExp(`^/api/customers/${UUID}$`), deleteCustomer],
   ['GET', /^\/api\/admin\/users$/, listUsers],
   ['GET', /^\/api\/admin\/companies$/, listCompanies],
+  ['POST', new RegExp(`^/api/admin/users/${UUID}/approve-into$`), approveInto],
   ['POST', /^\/api\/admin\/users$/, createUser],
   ['PUT', new RegExp(`^/api/admin/users/${UUID}$`), updateUser],
   ['DELETE', new RegExp(`^/api/admin/users/${UUID}$`), deleteUser],
@@ -683,7 +747,7 @@ export default async (req: Request): Promise<Response> => {
     }
     return json({ error: 'Not found' }, 404)
   } catch (err) {
-    if (err instanceof HttpError) return json({ error: err.message }, err.status)
+    if (err instanceof HttpError) return json({ error: err.message, ...(err.code ? { code: err.code } : {}) }, err.status)
     console.error(err)
     return json({ error: 'Something went wrong' }, 500)
   }

@@ -24,7 +24,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   // Returns the new account's status; 'approved' means the user is now logged in
-  async function signup(input: { email: string; password: string; businessName: string; contactName: string }) {
+  async function signup(input: { email: string; password: string; businessName: string; contactName: string; confirmNewCompany?: boolean }) {
     const r = await api<{ user: User | null; status?: string }>('/auth/signup', { method: 'POST', body: input })
     user.value = r.user
     return r.user ? 'approved' : (r.status ?? 'pending')

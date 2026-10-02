@@ -4,9 +4,11 @@ import type { SignatureData } from '../types'
 
 export class ApiError extends Error {
   status: number
-  constructor(status: number, message: string) {
+  code?: string
+  constructor(status: number, message: string, code?: string) {
     super(message)
     this.status = status
+    this.code = code
   }
 }
 
@@ -19,7 +21,7 @@ export async function api<T>(path: string, options: { method?: string; body?: un
   })
   const payload = await res.json().catch(() => ({}))
   if (res.status >= 500) throw new ApiError(res.status, "We couldn't reach the server. Try again in a minute.")
-  if (!res.ok) throw new ApiError(res.status, payload.error ?? `Request failed (${res.status})`)
+  if (!res.ok) throw new ApiError(res.status, payload.error ?? `Request failed (${res.status})`, payload.code)
   return payload as T
 }
 

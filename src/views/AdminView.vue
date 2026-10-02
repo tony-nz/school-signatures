@@ -5,7 +5,11 @@ import { api, type User } from '../lib/api'
 import { useAuthStore } from '../stores/auth'
 
 // Counts are for the user's whole company
-type AdminUser = User & { memberCount: number; signatureCount: number; customerCount: number }
+type AdminUser = User & {
+  memberCount: number; signatureCount: number; customerCount: number
+  // An established company with the same name, which a pending sign-up probably belongs to
+  matchingCompany: { id: string; name: string } | null
+}
 interface Company { id: string; name: string; memberCount: number }
 
 const auth = useAuthStore()
@@ -70,6 +74,10 @@ async function run(action: () => Promise<unknown>, success?: string) {
     return false
   }
 }
+
+const approveInto = (u: AdminUser, company: { id: string; name: string }) =>
+  run(() => api(`/admin/users/${u.id}/approve-into`, { method: 'POST', body: { companyId: company.id } }),
+    `${u.email} approved and added to ${company.name}`)
 
 const setStatus = (u: AdminUser, status: User['status']) =>
   run(() => api(`/admin/users/${u.id}/status`, { method: 'POST', body: { status } }))
@@ -235,6 +243,9 @@ onMounted(load)
                 <span v-if="u.companyRole === 'owner'" class="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">owner</span>
                 <span v-if="u.id === auth.user?.id" class="text-[10px] text-slate-400">(you)</span>
               </div>
+              <div v-if="u.status === 'pending' && u.matchingCompany" class="text-xs text-amber-600 dark:text-amber-400">
+                Matches existing company {{ u.matchingCompany.name }}
+              </div>
               <div class="text-xs text-slate-400 truncate">
                 {{ u.contactName ? `${u.contactName} · ` : '' }}{{ u.email }} · joined {{ fmt(u.createdAt) }}
                 · {{ u.memberCount }} member{{ u.memberCount === 1 ? '' : 's' }}
@@ -244,7 +255,10 @@ onMounted(load)
             </div>
             <div class="flex items-center gap-2">
               <template v-if="u.id !== auth.user?.id">
-                <button v-if="u.status !== 'approved'" @click="setStatus(u, 'approved')" class="btn-approve">Approve</button>
+                <button v-if="u.status === 'pending' && u.matchingCompany" @click="approveInto(u, u.matchingCompany)" class="btn-approve">Approve into {{ u.matchingCompany.name }}</button>
+                <button v-if="u.status !== 'approved'" @click="setStatus(u, 'approved')" :class="u.status === 'pending' && u.matchingCompany ? 'btn-secondary' : 'btn-approve'">
+                  {{ u.status === 'pending' && u.matchingCompany ? 'Approve as new company' : 'Approve' }}
+                </button>
                 <button v-if="u.status === 'pending'" @click="setStatus(u, 'rejected')" class="btn-secondary">Reject</button>
               </template>
               <button @click="toggle(u)" class="btn-secondary">{{ expanded === u.id ? 'Close' : 'Manage' }}</button>

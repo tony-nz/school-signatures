@@ -4,7 +4,7 @@ import AccountMenu from './AccountMenu.vue'
 import { useAuthStore } from '../../stores/auth'
 
 // Simple page frame for the non-editor pages (login, account, admin)
-defineProps<{ title: string; subtitle?: string; narrow?: boolean }>()
+defineProps<{ title: string; subtitle?: string; narrow?: boolean; wide?: boolean }>()
 const auth = useAuthStore()
 </script>
 
@@ -19,7 +19,7 @@ const auth = useAuthStore()
         </div>
       </div>
     </header>
-    <main class="flex-1 w-full mx-auto px-4 py-10" :class="narrow ? 'max-w-md' : 'max-w-4xl'">
+    <main class="flex-1 w-full mx-auto px-4 py-10" :class="narrow ? 'max-w-md' : wide ? 'max-w-5xl' : 'max-w-4xl'">
       <h1 class="text-xl font-bold text-slate-800 dark:text-slate-100">{{ title }}</h1>
       <p v-if="subtitle" class="text-sm text-slate-500 dark:text-slate-400 mt-1">{{ subtitle }}</p>
       <div class="mt-6">

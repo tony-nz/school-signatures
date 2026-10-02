@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AuthShell from '../components/account/AuthShell.vue'
+import { ApiError } from '../lib/api'
 import { useAuthStore } from '../stores/auth'
 
 const auth = useAuthStore()
@@ -14,6 +15,8 @@ const password = ref('')
 const error = ref('')
 const busy = ref(false)
 const pending = ref(false)
+// Set when the business name matches an existing company; submitting again goes ahead anyway
+const companyExists = ref(false)
 
 async function submit() {
   busy.value = true
@@ -24,11 +27,13 @@ async function submit() {
       contactName: contactName.value,
       email: email.value,
       password: password.value,
+      confirmNewCompany: companyExists.value,
     })
     if (status === 'approved') router.push('/account')
     else pending.value = true
   } catch (e) {
     error.value = (e as Error).message
+    companyExists.value = e instanceof ApiError && e.code === 'company_exists'
   } finally {
     busy.value = false
   }
@@ -46,7 +51,7 @@ async function submit() {
     <form v-else @submit.prevent="submit" class="flex flex-col gap-4">
       <label class="field">
         <span>Business name</span>
-        <input v-model="businessName" type="text" autocomplete="organization" required class="input h-11" />
+        <input v-model="businessName" type="text" autocomplete="organization" required class="input h-11" @input="companyExists = false" />
       </label>
       <label class="field">
         <span>Your name</span>
@@ -61,8 +66,9 @@ async function submit() {
         <input v-model="password" type="password" autocomplete="new-password" minlength="8" required class="input h-11" />
         <small class="text-xs text-slate-400">At least 8 characters</small>
       </label>
-      <p v-if="error" class="text-[13px] text-red-600 dark:text-red-400" role="alert">{{ error }}</p>
-      <button type="submit" :disabled="busy" class="btn-primary h-[46px] font-bold">{{ busy ? 'Sending…' : 'Request access' }}</button>
+      <p v-if="companyExists" class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-[13px] text-amber-800 dark:border-amber-900/60 dark:bg-amber-900/20 dark:text-amber-300" role="alert">{{ error }}</p>
+      <p v-else-if="error" class="text-[13px] text-red-600 dark:text-red-400" role="alert">{{ error }}</p>
+      <button type="submit" :disabled="busy" class="btn-primary h-[46px] font-bold">{{ busy ? 'Sending…' : companyExists ? 'Continue anyway' : 'Request access' }}</button>
     </form>
     <template #footer>
       <span>Already have an account?</span>
