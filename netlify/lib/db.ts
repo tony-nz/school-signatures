@@ -12,6 +12,7 @@ export function db(): NeonQueryFunction<false, false> {
   return client
 }
 
+// A row from the `accounts` view: the user joined with their company's branding
 export interface UserRow {
   id: string
   email: string
@@ -24,6 +25,8 @@ export interface UserRow {
   role: 'retailer' | 'admin'
   status: 'pending' | 'approved' | 'rejected'
   created_at: string
+  company_id: string
+  company_role: 'owner' | 'member'
 }
 
 // The shape sent to the browser — never includes the password hash
@@ -39,5 +42,7 @@ export function publicUser(u: UserRow) {
     role: u.role,
     status: u.status,
     createdAt: u.created_at,
+    companyId: u.company_id,
+    companyRole: u.company_role,
   }
 }

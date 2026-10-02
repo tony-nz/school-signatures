@@ -1,10 +1,13 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import PageShell from '../components/account/PageShell.vue'
 import ToggleSwitch from '../components/editor/ToggleSwitch.vue'
+import TeamPanel from '../components/account/TeamPanel.vue'
 import { useAuthStore } from '../stores/auth'
 
 const auth = useAuthStore()
+// Company branding is shared by the whole team, so only its owner (or a site admin) edits it
+const canEditBranding = computed(() => auth.user?.companyRole === 'owner' || auth.isAdmin)
 
 const businessName = ref(auth.user?.businessName ?? '')
 const contactName = ref(auth.user?.contactName ?? '')
@@ -15,6 +18,32 @@ const error = ref('')
 const message = ref('')
 const busy = ref(false)
 const fileInput = ref<HTMLInputElement | null>(null)
+
+const currentPassword = ref('')
+const newPassword = ref('')
+const confirmPassword = ref('')
+const passwordError = ref('')
+const passwordMessage = ref('')
+const passwordBusy = ref(false)
+
+async function changePassword() {
+  passwordError.value = ''
+  passwordMessage.value = ''
+  if (newPassword.value !== confirmPassword.value) {
+    passwordError.value = "New passwords don't match"
+    return
+  }
+  passwordBusy.value = true
+  try {
+    await auth.changePassword(currentPassword.value, newPassword.value)
+    currentPassword.value = newPassword.value = confirmPassword.value = ''
+    passwordMessage.value = 'Password changed. Any other devices have been signed out.'
+  } catch (e) {
+    passwordError.value = (e as Error).message
+  } finally {
+    passwordBusy.value = false
+  }
+}
 
 const MAX_LOGO_BYTES = 700 * 1024
 
@@ -35,13 +64,15 @@ async function save() {
   error.value = ''
   message.value = ''
   try {
-    await auth.updateAccount({
-      businessName: businessName.value,
-      contactName: contactName.value,
-      logo: logo.value,
-      showBusinessName: showBusinessName.value,
-      tagline: tagline.value,
-    })
+    await auth.updateAccount(canEditBranding.value
+      ? {
+          businessName: businessName.value,
+          contactName: contactName.value,
+          logo: logo.value,
+          showBusinessName: showBusinessName.value,
+          tagline: tagline.value,
+        }
+      : { contactName: contactName.value })
     message.value = 'Saved'
   } catch (e) {
     error.value = (e as Error).message
@@ -52,8 +83,10 @@ async function save() {
 </script>
 
 <template>
-  <PageShell title="Account & branding" subtitle="Your logo, business name and tagline appear in the app header while you're logged in." narrow>
+  <PageShell title="Account & branding" subtitle="Your company's logo, name and tagline appear in the app header for everyone on your team." narrow>
     <form @submit.prevent="save" class="card flex flex-col gap-5">
+      <fieldset :disabled="!canEditBranding" class="flex flex-col gap-5 min-w-0" :class="{ 'opacity-60': !canEditBranding }">
+      <p v-if="!canEditBranding" class="text-xs text-slate-500 dark:text-slate-400">Only your company's owner can change the branding.</p>
       <div class="field">
         <span>Logo</span>
         <div class="flex items-center gap-3">
@@ -84,6 +117,7 @@ async function save() {
         <input v-model="tagline" type="text" maxlength="60" placeholder="e.g. Full service IT for schools" class="input" />
         <small class="text-xs text-slate-400">Shown under your name, or in its place when the name is hidden.</small>
       </label>
+      </fieldset>
       <label class="field">
         <span>Your name</span>
         <input v-model="contactName" type="text" class="input" />
@@ -95,6 +129,27 @@ async function save() {
       <p v-if="error" class="text-sm text-red-500">{{ error }}</p>
       <p v-else-if="message" class="text-sm text-emerald-600">{{ message }}</p>
       <button type="submit" :disabled="busy" class="btn-primary self-start">{{ busy ? 'Saving…' : 'Save' }}</button>
+    </form>
+
+    <TeamPanel class="mt-6" />
+
+    <form @submit.prevent="changePassword" class="card flex flex-col gap-5 mt-6">
+      <h2 class="text-sm font-semibold text-slate-800 dark:text-slate-100">Change password</h2>
+      <label class="field">
+        <span>Current password</span>
+        <input v-model="currentPassword" type="password" autocomplete="current-password" required class="input" />
+      </label>
+      <label class="field">
+        <span>New password</span>
+        <input v-model="newPassword" type="password" autocomplete="new-password" minlength="8" required class="input" />
+      </label>
+      <label class="field">
+        <span>Confirm new password</span>
+        <input v-model="confirmPassword" type="password" autocomplete="new-password" minlength="8" required class="input" />
+      </label>
+      <p v-if="passwordError" class="text-sm text-red-500">{{ passwordError }}</p>
+      <p v-else-if="passwordMessage" class="text-sm text-emerald-600">{{ passwordMessage }}</p>
+      <button type="submit" :disabled="passwordBusy" class="btn-primary self-start">{{ passwordBusy ? 'Saving…' : 'Change password' }}</button>
     </form>
   </PageShell>
 </template>

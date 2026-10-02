@@ -45,8 +45,36 @@ export async function currentUser(req: Request): Promise<UserRow | null> {
   const token = readCookie(req, COOKIE_NAME)
   if (!token) return null
   const rows = await db()`
-    SELECT u.* FROM sessions s JOIN users u ON u.id = s.user_id
+    SELECT u.* FROM sessions s JOIN accounts u ON u.id = s.user_id
     WHERE s.id = ${sha256(token)} AND s.expires_at > now()
+  ` as UserRow[]
+  return rows[0] ?? null
+}
+
+// Signs the user out everywhere except the request's own session (if it belongs to them)
+export async function deleteOtherSessions(req: Request, userId: string): Promise<void> {
+  const token = readCookie(req, COOKIE_NAME)
+  await db()`DELETE FROM sessions WHERE user_id = ${userId} AND id <> ${token ? sha256(token) : ''}`
+}
+
+// ─── Password resets ─────────────────────────────────────────────────────────
+
+const RESET_HOURS = 24
+
+// Creates a one-time reset token, replacing any earlier link for this user
+export async function createPasswordReset(userId: string): Promise<{ token: string; expires: Date }> {
+  const token = randomBytes(32).toString('base64url')
+  const expires = new Date(Date.now() + RESET_HOURS * 60 * 60 * 1000)
+  await db()`DELETE FROM password_resets WHERE user_id = ${userId}`
+  await db()`INSERT INTO password_resets (id, user_id, expires_at) VALUES (${sha256(token)}, ${userId}, ${expires.toISOString()})`
+  return { token, expires }
+}
+
+// Returns the user a valid reset token belongs to, or null
+export async function passwordResetUser(token: string): Promise<UserRow | null> {
+  const rows = await db()`
+    SELECT u.* FROM password_resets r JOIN accounts u ON u.id = r.user_id
+    WHERE r.id = ${sha256(token)} AND r.expires_at > now()
   ` as UserRow[]
   return rows[0] ?? null
 }

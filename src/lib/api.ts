@@ -34,6 +34,8 @@ export interface User {
   role: 'retailer' | 'admin'
   status: 'pending' | 'approved' | 'rejected'
   createdAt: string
+  companyId: string
+  companyRole: 'owner' | 'member'
 }
 
 export interface Customer {

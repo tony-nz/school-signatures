@@ -40,7 +40,11 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = r.user
   }
 
-  return { user, loaded, isAdmin, load, login, signup, logout, updateAccount }
+  async function changePassword(currentPassword: string, newPassword: string) {
+    await api('/account/password', { method: 'POST', body: { currentPassword, newPassword } })
+  }
+
+  return { user, loaded, isAdmin, load, login, signup, logout, updateAccount, changePassword }
 })
 
 // Lets Vite hot-reload this store in dev without a page refresh

@@ -1,8 +1,10 @@
 import type { Config } from '@netlify/functions'
+import { randomBytes, randomUUID } from 'node:crypto'
 import { db, publicUser, type UserRow } from '../lib/db'
 import {
   hashPassword, verifyPassword, createSession, deleteSession, currentUser,
   sessionCookie, clearedSessionCookie, isBootstrapAdmin,
+  deleteOtherSessions, createPasswordReset, passwordResetUser,
 } from '../lib/auth'
 
 export const config: Config = { path: '/api/*' }
@@ -56,30 +58,71 @@ function checkOrigin(req: Request) {
   }
 }
 
+// ─── Accounts & companies ────────────────────────────────────────────────────
+
+async function account(id: string): Promise<UserRow | null> {
+  const rows = await db()`SELECT * FROM accounts WHERE id = ${id}` as UserRow[]
+  return rows[0] ?? null
+}
+
+interface NewAccount {
+  email: string
+  passwordHash: string
+  contactName: string
+  role: 'retailer' | 'admin'
+  status: UserRow['status']
+  companyRole: UserRow['company_role']
+  companyId?: string    // join this company…
+  companyName?: string  // …or create a new one with this name
+}
+
+// Inserts the user (and their new company) in one transaction, so a taken email leaves nothing behind
+async function createAccount(input: NewAccount): Promise<UserRow> {
+  const id = randomUUID()
+  const companyId = input.companyId ?? randomUUID()
+  const sql = db()
+  const queries = []
+  if (!input.companyId) queries.push(sql`INSERT INTO companies (id, name) VALUES (${companyId}, ${input.companyName ?? ''})`)
+  queries.push(sql`
+    INSERT INTO users (id, email, password_hash, contact_name, role, status, company_id, company_role)
+    VALUES (${id}, ${input.email}, ${input.passwordHash}, ${input.contactName}, ${input.role}, ${input.status},
+            ${companyId}, ${input.companyRole})
+  `)
+  try {
+    await sql.transaction(queries)
+  } catch (err) {
+    if (isUniqueViolation(err)) throw new HttpError(409, 'An account with that email already exists')
+    throw err
+  }
+  return (await account(id))!
+}
+
+// Hash of a random password nobody knows — used for invited users until they open their setup link
+const unusablePasswordHash = () => hashPassword(randomBytes(32).toString('hex'))
+
+const resetUrl = (req: Request, token: string) => new URL(`/reset-password?token=${token}`, req.url).toString()
+
+function validEmail(value: unknown): string {
+  const email = str(value).toLowerCase()
+  if (!EMAIL_RE.test(email)) throw new HttpError(400, 'Enter a valid email address')
+  return email
+}
+
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
 async function signup(req: Request) {
   const body = await readBody(req)
-  const email = str(body.email).toLowerCase()
-  const password = typeof body.password === 'string' ? body.password : ''
+  const email = validEmail(body.email)
+  const password = newPassword(body.password)
   const businessName = str(body.businessName)
-  const contactName = str(body.contactName)
-
-  if (!EMAIL_RE.test(email)) throw new HttpError(400, 'Enter a valid email address')
-  if (password.length < 8) throw new HttpError(400, 'Password must be at least 8 characters')
   if (!businessName) throw new HttpError(400, 'Business name is required')
 
   const admin = isBootstrapAdmin(email)
-  const rows = await db()`
-    INSERT INTO users (email, password_hash, business_name, contact_name, role, status)
-    VALUES (${email}, ${await hashPassword(password)}, ${businessName}, ${contactName},
-            ${admin ? 'admin' : 'retailer'}, ${admin ? 'approved' : 'pending'})
-    ON CONFLICT (email) DO NOTHING
-    RETURNING *
-  ` as UserRow[]
-  if (!rows[0]) throw new HttpError(409, 'An account with that email already exists')
-
-  const user = rows[0]
+  const user = await createAccount({
+    email, passwordHash: await hashPassword(password), contactName: str(body.contactName),
+    role: admin ? 'admin' : 'retailer', status: admin ? 'approved' : 'pending',
+    companyRole: 'owner', companyName: businessName,
+  })
   if (user.status !== 'approved') return json({ user: null, status: user.status }, 201)
 
   const session = await createSession(user.id)
@@ -91,7 +134,7 @@ async function login(req: Request) {
   const email = str(body.email).toLowerCase()
   const password = typeof body.password === 'string' ? body.password : ''
 
-  const rows = await db()`SELECT * FROM users WHERE email = ${email}` as UserRow[]
+  const rows = await db()`SELECT * FROM accounts WHERE email = ${email}` as UserRow[]
   const user = rows[0]
   // Always run a hash so response time doesn't reveal whether the email exists
   const ok = user
@@ -116,28 +159,142 @@ async function me(req: Request) {
   return json({ user: user && user.status === 'approved' ? publicUser(user) : null })
 }
 
-// ─── Account branding ────────────────────────────────────────────────────────
+// ─── Passwords ───────────────────────────────────────────────────────────────
 
+function newPassword(value: unknown): string {
+  if (typeof value !== 'string' || value.length < 8) throw new HttpError(400, 'Password must be at least 8 characters')
+  return value
+}
+
+// Stores a new password, invalidates any reset links and signs the user out of other sessions
+async function storePassword(req: Request, userId: string, password: string) {
+  await db()`UPDATE users SET password_hash = ${await hashPassword(password)}, updated_at = now() WHERE id = ${userId}`
+  await db()`DELETE FROM password_resets WHERE user_id = ${userId}`
+  await deleteOtherSessions(req, userId)
+}
+
+async function changeOwnPassword(req: Request) {
+  const user = await requireUser(req)
+  const body = await readBody(req)
+  const current = typeof body.currentPassword === 'string' ? body.currentPassword : ''
+  const password = newPassword(body.newPassword)
+  if (!(await verifyPassword(current, user.password_hash))) throw new HttpError(400, 'Your current password is incorrect')
+  await storePassword(req, user.id, password)
+  return json({ ok: true })
+}
+
+// Lets the reset page show who the link is for before they choose a password
+async function checkResetLink(req: Request) {
+  const token = new URL(req.url).searchParams.get('token') ?? ''
+  const user = token ? await passwordResetUser(token) : null
+  if (!user) throw new HttpError(400, 'This reset link is invalid or has expired')
+  return json({ email: user.email })
+}
+
+async function resetPassword(req: Request) {
+  const body = await readBody(req)
+  const token = str(body.token)
+  const password = newPassword(body.password)
+  const user = token ? await passwordResetUser(token) : null
+  if (!user) throw new HttpError(400, 'This reset link is invalid or has expired')
+  await storePassword(req, user.id, password)
+  return json({ ok: true, email: user.email })
+}
+
+// ─── Account & company branding ──────────────────────────────────────────────
+
+// Anyone can change their own name; only the company owner (or a site admin) can change the branding
 async function updateAccount(req: Request) {
   const user = await requireUser(req)
   const body = await readBody(req)
-  const businessName = body.businessName === undefined ? user.business_name : str(body.businessName)
   const contactName = body.contactName === undefined ? user.contact_name : str(body.contactName)
+  const businessName = body.businessName === undefined ? user.business_name : str(body.businessName)
   const logo = body.logo === undefined ? user.logo : str(body.logo)
   const showBusinessName = typeof body.showBusinessName === 'boolean' ? body.showBusinessName : user.show_business_name
   const tagline = body.tagline === undefined ? user.tagline : str(body.tagline)
 
+  const brandingChanged = businessName !== user.business_name || logo !== user.logo
+    || showBusinessName !== user.show_business_name || tagline !== user.tagline
+  if (brandingChanged && !canManageCompany(user)) throw new HttpError(403, "Only your company's owner can change its branding")
   if (!businessName) throw new HttpError(400, 'Business name is required')
   if (logo.length > MAX_LOGO_CHARS) throw new HttpError(413, 'Logo is too large (max ~750 KB)')
   if (logo && !/^(data:image\/|https:\/\/)/.test(logo)) throw new HttpError(400, 'Logo must be an image upload or https URL')
   if (tagline.length > MAX_TAGLINE_CHARS) throw new HttpError(400, `Tagline must be ${MAX_TAGLINE_CHARS} characters or fewer`)
 
-  const rows = await db()`
-    UPDATE users SET business_name = ${businessName}, contact_name = ${contactName}, logo = ${logo},
-      show_business_name = ${showBusinessName}, tagline = ${tagline}, updated_at = now()
-    WHERE id = ${user.id} RETURNING *
-  ` as UserRow[]
-  return json({ user: publicUser(rows[0]) })
+  await db()`UPDATE users SET contact_name = ${contactName}, updated_at = now() WHERE id = ${user.id}`
+  if (brandingChanged) {
+    await db()`
+      UPDATE companies SET name = ${businessName}, logo = ${logo}, show_business_name = ${showBusinessName},
+        tagline = ${tagline}, updated_at = now()
+      WHERE id = ${user.company_id}
+    `
+  }
+  return json({ user: publicUser((await account(user.id))!) })
+}
+
+// ─── Team (company owners manage their own users) ──────────────────────────
+
+const canManageCompany = (user: UserRow) => user.company_role === 'owner' || user.role === 'admin'
+
+async function requireCompanyManager(req: Request): Promise<UserRow> {
+  const user = await requireUser(req)
+  if (!canManageCompany(user)) throw new HttpError(403, "Only your company's owner can manage its team")
+  return user
+}
+
+// A member of the manager's own company, other than the manager themselves
+async function teamMember(manager: UserRow, id: string): Promise<UserRow> {
+  if (id === manager.id) throw new HttpError(400, "You can't change your own team access")
+  const rows = await db()`SELECT * FROM accounts WHERE id = ${id} AND company_id = ${manager.company_id}` as UserRow[]
+  if (!rows[0]) throw new HttpError(404, 'Team member not found')
+  return rows[0]
+}
+
+const teamRow = (u: UserRow) => ({
+  id: u.id, email: u.email, contactName: u.contact_name, companyRole: u.company_role, status: u.status, createdAt: u.created_at,
+})
+
+async function listTeam(req: Request) {
+  const user = await requireUser(req)
+  const rows = await db()`SELECT * FROM accounts WHERE company_id = ${user.company_id} ORDER BY created_at` as UserRow[]
+  return json({ members: rows.map(teamRow), canManage: canManageCompany(user) })
+}
+
+// Adds a user to the company and returns a one-time link for them to choose their password
+async function addTeamMember(req: Request) {
+  const manager = await requireCompanyManager(req)
+  const body = await readBody(req)
+  const user = await createAccount({
+    email: validEmail(body.email), passwordHash: await unusablePasswordHash(), contactName: str(body.contactName),
+    role: 'retailer', status: 'approved', companyRole: body.companyRole === 'owner' ? 'owner' : 'member',
+    companyId: manager.company_id,
+  })
+  const { token, expires } = await createPasswordReset(user.id)
+  return json({ member: teamRow(user), setupUrl: resetUrl(req, token), expiresAt: expires.toISOString() }, 201)
+}
+
+async function setTeamRole(req: Request, id: string) {
+  const manager = await requireCompanyManager(req)
+  const member = await teamMember(manager, id)
+  const companyRole = str((await readBody(req)).companyRole)
+  if (companyRole !== 'owner' && companyRole !== 'member') throw new HttpError(400, 'Invalid company role')
+  await db()`UPDATE users SET company_role = ${companyRole}, updated_at = now() WHERE id = ${member.id}`
+  return json({ member: teamRow((await account(member.id))!) })
+}
+
+async function teamResetLink(req: Request, id: string) {
+  const manager = await requireCompanyManager(req)
+  const member = await teamMember(manager, id)
+  const { token, expires } = await createPasswordReset(member.id)
+  return json({ url: resetUrl(req, token), expiresAt: expires.toISOString() })
+}
+
+// The company keeps everything the member created
+async function removeTeamMember(req: Request, id: string) {
+  const manager = await requireCompanyManager(req)
+  const member = await teamMember(manager, id)
+  await db()`DELETE FROM users WHERE id = ${member.id}`
+  return json({ ok: true })
 }
 
 // ─── Customers ───────────────────────────────────────────────────────────────
@@ -148,7 +305,7 @@ const customerRow = (r: Record<string, unknown>) => ({ id: r.id, name: r.name, c
 async function ownedCustomerId(user: UserRow, value: unknown): Promise<string | null> {
   if (value === null || value === undefined || value === '') return null
   if (typeof value !== 'string' || !/^[0-9a-f-]{36}$/.test(value)) throw new HttpError(400, 'Invalid customerId')
-  const rows = await db()`SELECT id FROM customers WHERE id = ${value} AND user_id = ${user.id}`
+  const rows = await db()`SELECT id FROM customers WHERE id = ${value} AND company_id = ${user.company_id}`
   if (!rows[0]) throw new HttpError(400, 'Customer not found')
   return value
 }
@@ -166,10 +323,10 @@ async function createCustomer(req: Request) {
   const user = await requireUser(req)
   const name = customerName(await readBody(req))
   try {
-    const rows = await db()`INSERT INTO customers (user_id, name) VALUES (${user.id}, ${name}) RETURNING *`
+    const rows = await db()`INSERT INTO customers (company_id, user_id, name) VALUES (${user.company_id}, ${user.id}, ${name}) RETURNING *`
     return json({ customer: customerRow(rows[0]) }, 201)
   } catch (err) {
-    if (isUniqueViolation(err)) throw new HttpError(409, `You already have a customer called "${name}"`)
+    if (isUniqueViolation(err)) throw new HttpError(409, `Your company already has a customer called "${name}"`)
     throw err
   }
 }
@@ -180,12 +337,12 @@ async function renameCustomer(req: Request, id: string) {
   try {
     const rows = await db()`
       UPDATE customers SET name = ${name}, updated_at = now()
-      WHERE id = ${id} AND user_id = ${user.id} RETURNING *
+      WHERE id = ${id} AND company_id = ${user.company_id} RETURNING *
     `
     if (!rows[0]) throw new HttpError(404, 'Customer not found')
     return json({ customer: customerRow(rows[0]) })
   } catch (err) {
-    if (isUniqueViolation(err)) throw new HttpError(409, `You already have a customer called "${name}"`)
+    if (isUniqueViolation(err)) throw new HttpError(409, `Your company already has a customer called "${name}"`)
     throw err
   }
 }
@@ -193,7 +350,7 @@ async function renameCustomer(req: Request, id: string) {
 // The customer's signatures are kept and become uncategorised (ON DELETE SET NULL)
 async function deleteCustomer(req: Request, id: string) {
   const user = await requireUser(req)
-  const rows = await db()`DELETE FROM customers WHERE id = ${id} AND user_id = ${user.id} RETURNING id`
+  const rows = await db()`DELETE FROM customers WHERE id = ${id} AND company_id = ${user.company_id} RETURNING id`
   if (!rows[0]) throw new HttpError(404, 'Customer not found')
   return json({ ok: true })
 }
@@ -220,15 +377,15 @@ const signatureRow = (r: Record<string, unknown>) => ({
 async function listSignatures(req: Request) {
   const user = await requireUser(req)
   const [signatures, customers] = await Promise.all([
-    db()`SELECT * FROM signatures WHERE user_id = ${user.id} ORDER BY updated_at DESC`,
-    db()`SELECT * FROM customers WHERE user_id = ${user.id} ORDER BY lower(name)`,
+    db()`SELECT * FROM signatures WHERE company_id = ${user.company_id} ORDER BY updated_at DESC`,
+    db()`SELECT * FROM customers WHERE company_id = ${user.company_id} ORDER BY lower(name)`,
   ])
   return json({ signatures: signatures.map(signatureRow), customers: customers.map(customerRow) })
 }
 
 async function getSignature(req: Request, id: string) {
   const user = await requireUser(req)
-  const rows = await db()`SELECT * FROM signatures WHERE id = ${id} AND user_id = ${user.id}`
+  const rows = await db()`SELECT * FROM signatures WHERE id = ${id} AND company_id = ${user.company_id}`
   if (!rows[0]) throw new HttpError(404, 'Signature not found')
   return json({ signature: signatureRow(rows[0]) })
 }
@@ -239,8 +396,8 @@ async function createSignature(req: Request) {
   const { name, templateId, data } = signatureInput(body)
   const customerId = await ownedCustomerId(user, body.customerId)
   const rows = await db()`
-    INSERT INTO signatures (user_id, customer_id, name, template_id, data)
-    VALUES (${user.id}, ${customerId}, ${name}, ${templateId}, ${data}::jsonb) RETURNING *
+    INSERT INTO signatures (company_id, user_id, customer_id, name, template_id, data)
+    VALUES (${user.company_id}, ${user.id}, ${customerId}, ${name}, ${templateId}, ${data}::jsonb) RETURNING *
   `
   return json({ signature: signatureRow(rows[0]) }, 201)
 }
@@ -251,7 +408,7 @@ async function updateSignature(req: Request, id: string) {
 
   // Details-only update (rename and/or move to another customer) — leaves the design untouched
   if (body.data === undefined) {
-    const existing = await db()`SELECT * FROM signatures WHERE id = ${id} AND user_id = ${user.id}`
+    const existing = await db()`SELECT * FROM signatures WHERE id = ${id} AND company_id = ${user.company_id}`
     if (!existing[0]) throw new HttpError(404, 'Signature not found')
     const name = body.name === undefined ? String(existing[0].name) : str(body.name)
     if (!name) throw new HttpError(400, 'Signature name is required')
@@ -260,7 +417,7 @@ async function updateSignature(req: Request, id: string) {
       : await ownedCustomerId(user, body.customerId)
     const rows = await db()`
       UPDATE signatures SET name = ${name}, customer_id = ${customerId}, updated_at = now()
-      WHERE id = ${id} AND user_id = ${user.id} RETURNING *
+      WHERE id = ${id} AND company_id = ${user.company_id} RETURNING *
     `
     return json({ signature: signatureRow(rows[0]) })
   }
@@ -269,12 +426,12 @@ async function updateSignature(req: Request, id: string) {
   const rows = body.customerId === undefined
     ? await db()`
         UPDATE signatures SET name = ${name}, template_id = ${templateId}, data = ${data}::jsonb, updated_at = now()
-        WHERE id = ${id} AND user_id = ${user.id} RETURNING *
+        WHERE id = ${id} AND company_id = ${user.company_id} RETURNING *
       `
     : await db()`
         UPDATE signatures SET name = ${name}, template_id = ${templateId}, data = ${data}::jsonb,
           customer_id = ${await ownedCustomerId(user, body.customerId)}, updated_at = now()
-        WHERE id = ${id} AND user_id = ${user.id} RETURNING *
+        WHERE id = ${id} AND company_id = ${user.company_id} RETURNING *
       `
   if (!rows[0]) throw new HttpError(404, 'Signature not found')
   return json({ signature: signatureRow(rows[0]) })
@@ -298,7 +455,7 @@ async function bulkSaveSignatures(req: Request) {
 
   const existing = await db()`
     SELECT id, lower(data->>'email') AS email FROM signatures
-    WHERE user_id = ${user.id} AND customer_id IS NOT DISTINCT FROM ${customerId}
+    WHERE company_id = ${user.company_id} AND customer_id IS NOT DISTINCT FROM ${customerId}
       AND coalesce(data->>'email', '') <> ''
     ORDER BY updated_at DESC
   ` as { id: string; email: string }[]
@@ -314,13 +471,13 @@ async function bulkSaveSignatures(req: Request) {
       updated++
       return sql`
         UPDATE signatures SET name = ${item.name}, template_id = ${item.templateId}, data = ${item.data}::jsonb, updated_at = now()
-        WHERE id = ${id} AND user_id = ${user.id} RETURNING *
+        WHERE id = ${id} AND company_id = ${user.company_id} RETURNING *
       `
     }
     created++
     return sql`
-      INSERT INTO signatures (user_id, customer_id, name, template_id, data)
-      VALUES (${user.id}, ${customerId}, ${item.name}, ${item.templateId}, ${item.data}::jsonb) RETURNING *
+      INSERT INTO signatures (company_id, user_id, customer_id, name, template_id, data)
+      VALUES (${user.company_id}, ${user.id}, ${customerId}, ${item.name}, ${item.templateId}, ${item.data}::jsonb) RETURNING *
     `
   })
   const results = await sql.transaction(queries) as Record<string, unknown>[][]
@@ -329,7 +486,7 @@ async function bulkSaveSignatures(req: Request) {
 
 async function deleteSignature(req: Request, id: string) {
   const user = await requireUser(req)
-  const rows = await db()`DELETE FROM signatures WHERE id = ${id} AND user_id = ${user.id} RETURNING id`
+  const rows = await db()`DELETE FROM signatures WHERE id = ${id} AND company_id = ${user.company_id} RETURNING id`
   if (!rows[0]) throw new HttpError(404, 'Signature not found')
   return json({ ok: true })
 }
@@ -340,82 +497,113 @@ async function listUsers(req: Request) {
   await requireAdmin(req)
   const rows = await db()`
     SELECT u.*,
-      (SELECT count(*)::int FROM signatures s WHERE s.user_id = u.id) AS signature_count,
-      (SELECT count(*)::int FROM customers c WHERE c.user_id = u.id) AS customer_count
-    FROM users u ORDER BY u.created_at DESC
-  ` as (UserRow & { signature_count: number; customer_count: number })[]
+      (SELECT count(*)::int FROM users m WHERE m.company_id = u.company_id) AS member_count,
+      (SELECT count(*)::int FROM signatures s WHERE s.company_id = u.company_id) AS signature_count,
+      (SELECT count(*)::int FROM customers c WHERE c.company_id = u.company_id) AS customer_count
+    FROM accounts u ORDER BY lower(u.business_name), u.company_role DESC, u.created_at
+  ` as (UserRow & { member_count: number; signature_count: number; customer_count: number })[]
   return json({
-    users: rows.map((u) => ({ ...publicUser(u), signatureCount: u.signature_count, customerCount: u.customer_count })),
+    users: rows.map((u) => ({
+      ...publicUser(u), memberCount: u.member_count, signatureCount: u.signature_count, customerCount: u.customer_count,
+    })),
   })
 }
 
-// Admin-created accounts skip the approval queue
+async function listCompanies(req: Request) {
+  await requireAdmin(req)
+  const rows = await db()`
+    SELECT c.id, c.name, (SELECT count(*)::int FROM users u WHERE u.company_id = c.id) AS member_count
+    FROM companies c ORDER BY lower(c.name)
+  `
+  return json({ companies: rows.map((c) => ({ id: c.id, name: c.name, memberCount: c.member_count })) })
+}
+
+async function adminCompanyId(value: unknown): Promise<string> {
+  if (typeof value !== 'string' || !/^[0-9a-f-]{36}$/.test(value)) throw new HttpError(400, 'Invalid companyId')
+  const rows = await db()`SELECT id FROM companies WHERE id = ${value}`
+  if (!rows[0]) throw new HttpError(400, 'Company not found')
+  return value
+}
+
+// Admin-created accounts skip the approval queue. They join an existing company (companyId) or start a new one (businessName).
 async function createUser(req: Request) {
   await requireAdmin(req)
   const body = await readBody(req)
-  const email = str(body.email).toLowerCase()
-  const password = typeof body.password === 'string' ? body.password : ''
-  const businessName = str(body.businessName)
-  const contactName = str(body.contactName)
-  const role = body.role === 'admin' ? 'admin' : 'retailer'
+  const email = validEmail(body.email)
+  const password = newPassword(body.password)
+  const companyId = body.companyId ? await adminCompanyId(body.companyId) : undefined
+  const companyName = str(body.businessName)
+  if (!companyId && !companyName) throw new HttpError(400, 'Choose a company or enter a new business name')
 
-  if (!EMAIL_RE.test(email)) throw new HttpError(400, 'Enter a valid email address')
-  if (password.length < 8) throw new HttpError(400, 'Password must be at least 8 characters')
-  if (!businessName) throw new HttpError(400, 'Business name is required')
-
-  const rows = await db()`
-    INSERT INTO users (email, password_hash, business_name, contact_name, role, status)
-    VALUES (${email}, ${await hashPassword(password)}, ${businessName}, ${contactName}, ${role}, 'approved')
-    ON CONFLICT (email) DO NOTHING
-    RETURNING *
-  ` as UserRow[]
-  if (!rows[0]) throw new HttpError(409, 'An account with that email already exists')
-  return json({ user: publicUser(rows[0]) }, 201)
+  const user = await createAccount({
+    email, passwordHash: await hashPassword(password), contactName: str(body.contactName),
+    role: body.role === 'admin' ? 'admin' : 'retailer', status: 'approved',
+    companyRole: !companyId || body.companyRole === 'owner' ? 'owner' : 'member',
+    companyId, companyName,
+  })
+  return json({ user: publicUser(user) }, 201)
 }
 
+// Edits a user; businessName renames their whole company, companyId moves them to another company
 async function updateUser(req: Request, id: string) {
   await requireAdmin(req)
   const body = await readBody(req)
-  const rows = await db()`SELECT * FROM users WHERE id = ${id}` as UserRow[]
-  const user = rows[0]
+  const user = await account(id)
   if (!user) throw new HttpError(404, 'User not found')
 
-  const email = body.email === undefined ? user.email : str(body.email).toLowerCase()
-  const businessName = body.businessName === undefined ? user.business_name : str(body.businessName)
+  const email = body.email === undefined ? user.email : validEmail(body.email)
   const contactName = body.contactName === undefined ? user.contact_name : str(body.contactName)
-  if (!EMAIL_RE.test(email)) throw new HttpError(400, 'Enter a valid email address')
+  const companyId = body.companyId === undefined ? user.company_id : await adminCompanyId(body.companyId)
+  const companyRole = body.companyRole === 'owner' || body.companyRole === 'member' ? body.companyRole : user.company_role
+  const businessName = body.businessName === undefined ? user.business_name : str(body.businessName)
   if (!businessName) throw new HttpError(400, 'Business name is required')
 
   try {
-    const updated = await db()`
-      UPDATE users SET email = ${email}, business_name = ${businessName}, contact_name = ${contactName}, updated_at = now()
-      WHERE id = ${id} RETURNING *
-    ` as UserRow[]
-    return json({ user: publicUser(updated[0]) })
+    await db()`
+      UPDATE users SET email = ${email}, contact_name = ${contactName}, company_id = ${companyId},
+        company_role = ${companyRole}, updated_at = now()
+      WHERE id = ${id}
+    `
   } catch (err) {
     if (isUniqueViolation(err)) throw new HttpError(409, 'Another account already uses that email')
     throw err
   }
+  // Renaming applies to the company the user was in when the form was opened
+  if (businessName !== user.business_name && companyId === user.company_id) {
+    await db()`UPDATE companies SET name = ${businessName}, updated_at = now() WHERE id = ${companyId}`
+  }
+  return json({ user: publicUser((await account(id))!) })
 }
 
-// Setting a new password signs the user out everywhere (except the admin's own current session)
+// Admin sets a password directly; the user is signed out everywhere (except the admin's own session)
 async function setUserPassword(req: Request, id: string) {
-  const admin = await requireAdmin(req)
-  const password = (await readBody(req)).password
-  if (typeof password !== 'string' || password.length < 8) throw new HttpError(400, 'Password must be at least 8 characters')
-
-  const rows = await db()`UPDATE users SET password_hash = ${await hashPassword(password)}, updated_at = now() WHERE id = ${id} RETURNING id`
+  await requireAdmin(req)
+  const password = newPassword((await readBody(req)).password)
+  const rows = await db()`SELECT id FROM users WHERE id = ${id}`
   if (!rows[0]) throw new HttpError(404, 'User not found')
-  if (id !== admin.id) await db()`DELETE FROM sessions WHERE user_id = ${id}`
+  await storePassword(req, id, password)
   return json({ ok: true })
 }
 
-// Removes the account along with its sessions, customers and signatures (ON DELETE CASCADE)
+// Admin creates a one-time link the user opens to choose their own password
+async function createResetLink(req: Request, id: string) {
+  await requireAdmin(req)
+  const rows = await db()`SELECT id FROM users WHERE id = ${id}`
+  if (!rows[0]) throw new HttpError(404, 'User not found')
+  const { token, expires } = await createPasswordReset(id)
+  return json({ url: resetUrl(req, token), expiresAt: expires.toISOString() })
+}
+
+// Removes the user. If they were the company's last member, the company and all its data go too.
 async function deleteUser(req: Request, id: string) {
   const admin = await requireAdmin(req)
   if (id === admin.id) throw new HttpError(400, "You can't delete your own account")
-  const rows = await db()`DELETE FROM users WHERE id = ${id} RETURNING id`
+  const rows = await db()`DELETE FROM users WHERE id = ${id} RETURNING company_id`
   if (!rows[0]) throw new HttpError(404, 'User not found')
+  await db()`
+    DELETE FROM companies c WHERE c.id = ${rows[0].company_id}
+      AND NOT EXISTS (SELECT 1 FROM users u WHERE u.company_id = c.id)
+  `
   return json({ ok: true })
 }
 
@@ -425,11 +613,11 @@ async function setUserStatus(req: Request, id: string) {
   if (!['pending', 'approved', 'rejected'].includes(status)) throw new HttpError(400, 'Invalid status')
   if (id === admin.id) throw new HttpError(400, "You can't change your own status")
 
-  const rows = await db()`UPDATE users SET status = ${status}, updated_at = now() WHERE id = ${id} RETURNING *` as UserRow[]
+  const rows = await db()`UPDATE users SET status = ${status}, updated_at = now() WHERE id = ${id} RETURNING id`
   if (!rows[0]) throw new HttpError(404, 'User not found')
   // Un-approving someone signs them out everywhere
   if (status !== 'approved') await db()`DELETE FROM sessions WHERE user_id = ${id}`
-  return json({ user: publicUser(rows[0]) })
+  return json({ user: publicUser((await account(id))!) })
 }
 
 async function setUserRole(req: Request, id: string) {
@@ -439,12 +627,12 @@ async function setUserRole(req: Request, id: string) {
   // Keeps at least one admin: nobody can demote themselves
   if (id === admin.id) throw new HttpError(400, "You can't change your own role")
 
-  const rows = await db()`SELECT * FROM users WHERE id = ${id}` as UserRow[]
-  if (!rows[0]) throw new HttpError(404, 'User not found')
-  if (role === 'admin' && rows[0].status !== 'approved') throw new HttpError(400, 'Approve the account before making it an admin')
+  const user = await account(id)
+  if (!user) throw new HttpError(404, 'User not found')
+  if (role === 'admin' && user.status !== 'approved') throw new HttpError(400, 'Approve the account before making it an admin')
 
-  const updated = await db()`UPDATE users SET role = ${role}, updated_at = now() WHERE id = ${id} RETURNING *` as UserRow[]
-  return json({ user: publicUser(updated[0]) })
+  await db()`UPDATE users SET role = ${role}, updated_at = now() WHERE id = ${id}`
+  return json({ user: publicUser((await account(id))!) })
 }
 
 // ─── Router ──────────────────────────────────────────────────────────────────
@@ -457,6 +645,14 @@ const routes: [string, RegExp, Handler][] = [
   ['POST', /^\/api\/auth\/logout$/, logout],
   ['GET', /^\/api\/auth\/me$/, me],
   ['PUT', /^\/api\/account$/, updateAccount],
+  ['POST', /^\/api\/account\/password$/, changeOwnPassword],
+  ['GET', /^\/api\/team$/, listTeam],
+  ['POST', /^\/api\/team$/, addTeamMember],
+  ['PUT', new RegExp(`^/api/team/${UUID}$`), setTeamRole],
+  ['DELETE', new RegExp(`^/api/team/${UUID}$`), removeTeamMember],
+  ['POST', new RegExp(`^/api/team/${UUID}/reset-link$`), teamResetLink],
+  ['GET', /^\/api\/auth\/reset$/, checkResetLink],
+  ['POST', /^\/api\/auth\/reset$/, resetPassword],
   ['GET', /^\/api\/signatures$/, listSignatures],
   ['POST', /^\/api\/signatures$/, createSignature],
   ['POST', /^\/api\/signatures\/bulk$/, bulkSaveSignatures],
@@ -467,10 +663,12 @@ const routes: [string, RegExp, Handler][] = [
   ['PUT', new RegExp(`^/api/customers/${UUID}$`), renameCustomer],
   ['DELETE', new RegExp(`^/api/customers/${UUID}$`), deleteCustomer],
   ['GET', /^\/api\/admin\/users$/, listUsers],
+  ['GET', /^\/api\/admin\/companies$/, listCompanies],
   ['POST', /^\/api\/admin\/users$/, createUser],
   ['PUT', new RegExp(`^/api/admin/users/${UUID}$`), updateUser],
   ['DELETE', new RegExp(`^/api/admin/users/${UUID}$`), deleteUser],
   ['POST', new RegExp(`^/api/admin/users/${UUID}/password$`), setUserPassword],
+  ['POST', new RegExp(`^/api/admin/users/${UUID}/reset-link$`), createResetLink],
   ['POST', new RegExp(`^/api/admin/users/${UUID}/status$`), setUserStatus],
   ['POST', new RegExp(`^/api/admin/users/${UUID}/role$`), setUserRole],
 ]

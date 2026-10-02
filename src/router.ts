@@ -15,6 +15,7 @@ export const router = createRouter({
     { path: '/', component: EditorView, meta: { requiresAuth: true } },
     { path: '/login', component: () => import('./views/LoginView.vue') },
     { path: '/signup', component: () => import('./views/SignupView.vue') },
+    { path: '/reset-password', component: () => import('./views/ResetPasswordView.vue') },
     { path: '/account', component: () => import('./views/AccountView.vue'), meta: { requiresAuth: true } },
     { path: '/admin', component: () => import('./views/AdminView.vue'), meta: { requiresAuth: true, requiresAdmin: true } },
     { path: '/:pathMatch(.*)*', redirect: '/' },

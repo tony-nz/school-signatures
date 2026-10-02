@@ -14,6 +14,7 @@ const password = ref('')
 const error = ref('')
 const badCredentials = ref(false)
 const busy = ref(false)
+const showForgot = ref(false)
 
 async function submit() {
   busy.value = true
@@ -43,6 +44,8 @@ async function submit() {
         <span>Password</span>
         <input v-model="password" type="password" autocomplete="current-password" required class="input h-11" :class="{ 'input-error': badCredentials }" />
         <small v-if="error" class="text-[13px] text-red-600 dark:text-red-400" role="alert">{{ error }}</small>
+        <button type="button" @click="showForgot = !showForgot" class="self-end text-xs font-medium text-indigo-600 hover:text-indigo-800 dark:text-indigo-400">Forgot password?</button>
+        <small v-if="showForgot" class="text-xs text-slate-500 dark:text-slate-400">Ask your administrator to send you a password reset link.</small>
       </label>
       <button type="submit" :disabled="busy" class="btn-primary h-[46px] font-bold">{{ busy ? 'Logging in…' : 'Log in' }}</button>
     </form>
