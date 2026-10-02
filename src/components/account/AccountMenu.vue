@@ -38,7 +38,7 @@ async function logout() {
         <div class="text-xs text-slate-400 truncate">{{ auth.user.email }}</div>
       </div>
       <RouterLink to="/account" @click="open = false" class="menu-item">Account &amp; branding</RouterLink>
-      <RouterLink v-if="auth.isAdmin" to="/admin" @click="open = false" class="menu-item">Admin · approvals</RouterLink>
+      <RouterLink v-if="auth.isAdmin" to="/admin" @click="open = false" class="menu-item">Admin Centre</RouterLink>
       <button @click="logout" class="menu-item w-full text-left text-red-500">Log out</button>
     </div>
   </div>
