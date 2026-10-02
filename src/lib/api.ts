@@ -18,6 +18,7 @@ export async function api<T>(path: string, options: { method?: string; body?: un
     credentials: 'same-origin',
   })
   const payload = await res.json().catch(() => ({}))
+  if (res.status >= 500) throw new ApiError(res.status, "We couldn't reach the server. Try again in a minute.")
   if (!res.ok) throw new ApiError(res.status, payload.error ?? `Request failed (${res.status})`)
   return payload as T
 }
@@ -28,6 +29,8 @@ export interface User {
   businessName: string
   contactName: string
   logo: string
+  showBusinessName: boolean
+  tagline: string
   role: 'retailer' | 'admin'
   status: 'pending' | 'approved' | 'rejected'
   createdAt: string

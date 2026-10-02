@@ -18,6 +18,7 @@ const json = (body: unknown, status = 200, headers: Record<string, string> = {})
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const MAX_LOGO_CHARS = 1_000_000        // ~750 KB image as a data URL
+const MAX_TAGLINE_CHARS = 60
 const MAX_SIGNATURE_CHARS = 4_000_000   // signature JSON incl. embedded images
 const MAX_REQUEST_CHARS = 5_500_000     // Netlify caps function request bodies at 6 MB
 
@@ -123,13 +124,17 @@ async function updateAccount(req: Request) {
   const businessName = body.businessName === undefined ? user.business_name : str(body.businessName)
   const contactName = body.contactName === undefined ? user.contact_name : str(body.contactName)
   const logo = body.logo === undefined ? user.logo : str(body.logo)
+  const showBusinessName = typeof body.showBusinessName === 'boolean' ? body.showBusinessName : user.show_business_name
+  const tagline = body.tagline === undefined ? user.tagline : str(body.tagline)
 
   if (!businessName) throw new HttpError(400, 'Business name is required')
   if (logo.length > MAX_LOGO_CHARS) throw new HttpError(413, 'Logo is too large (max ~750 KB)')
   if (logo && !/^(data:image\/|https:\/\/)/.test(logo)) throw new HttpError(400, 'Logo must be an image upload or https URL')
+  if (tagline.length > MAX_TAGLINE_CHARS) throw new HttpError(400, `Tagline must be ${MAX_TAGLINE_CHARS} characters or fewer`)
 
   const rows = await db()`
-    UPDATE users SET business_name = ${businessName}, contact_name = ${contactName}, logo = ${logo}, updated_at = now()
+    UPDATE users SET business_name = ${businessName}, contact_name = ${contactName}, logo = ${logo},
+      show_business_name = ${showBusinessName}, tagline = ${tagline}, updated_at = now()
     WHERE id = ${user.id} RETURNING *
   ` as UserRow[]
   return json({ user: publicUser(rows[0]) })
@@ -333,15 +338,85 @@ async function deleteSignature(req: Request, id: string) {
 
 async function listUsers(req: Request) {
   await requireAdmin(req)
-  const params = new URL(req.url).searchParams
-  const status = params.get('status')
-  const role = params.get('role')
-  const rows = (status
-    ? await db()`SELECT * FROM users WHERE status = ${status} ORDER BY created_at DESC`
-    : role
-      ? await db()`SELECT * FROM users WHERE role = ${role} ORDER BY created_at DESC`
-      : await db()`SELECT * FROM users ORDER BY created_at DESC`) as UserRow[]
-  return json({ users: rows.map(publicUser) })
+  const rows = await db()`
+    SELECT u.*,
+      (SELECT count(*)::int FROM signatures s WHERE s.user_id = u.id) AS signature_count,
+      (SELECT count(*)::int FROM customers c WHERE c.user_id = u.id) AS customer_count
+    FROM users u ORDER BY u.created_at DESC
+  ` as (UserRow & { signature_count: number; customer_count: number })[]
+  return json({
+    users: rows.map((u) => ({ ...publicUser(u), signatureCount: u.signature_count, customerCount: u.customer_count })),
+  })
+}
+
+// Admin-created accounts skip the approval queue
+async function createUser(req: Request) {
+  await requireAdmin(req)
+  const body = await readBody(req)
+  const email = str(body.email).toLowerCase()
+  const password = typeof body.password === 'string' ? body.password : ''
+  const businessName = str(body.businessName)
+  const contactName = str(body.contactName)
+  const role = body.role === 'admin' ? 'admin' : 'retailer'
+
+  if (!EMAIL_RE.test(email)) throw new HttpError(400, 'Enter a valid email address')
+  if (password.length < 8) throw new HttpError(400, 'Password must be at least 8 characters')
+  if (!businessName) throw new HttpError(400, 'Business name is required')
+
+  const rows = await db()`
+    INSERT INTO users (email, password_hash, business_name, contact_name, role, status)
+    VALUES (${email}, ${await hashPassword(password)}, ${businessName}, ${contactName}, ${role}, 'approved')
+    ON CONFLICT (email) DO NOTHING
+    RETURNING *
+  ` as UserRow[]
+  if (!rows[0]) throw new HttpError(409, 'An account with that email already exists')
+  return json({ user: publicUser(rows[0]) }, 201)
+}
+
+async function updateUser(req: Request, id: string) {
+  await requireAdmin(req)
+  const body = await readBody(req)
+  const rows = await db()`SELECT * FROM users WHERE id = ${id}` as UserRow[]
+  const user = rows[0]
+  if (!user) throw new HttpError(404, 'User not found')
+
+  const email = body.email === undefined ? user.email : str(body.email).toLowerCase()
+  const businessName = body.businessName === undefined ? user.business_name : str(body.businessName)
+  const contactName = body.contactName === undefined ? user.contact_name : str(body.contactName)
+  if (!EMAIL_RE.test(email)) throw new HttpError(400, 'Enter a valid email address')
+  if (!businessName) throw new HttpError(400, 'Business name is required')
+
+  try {
+    const updated = await db()`
+      UPDATE users SET email = ${email}, business_name = ${businessName}, contact_name = ${contactName}, updated_at = now()
+      WHERE id = ${id} RETURNING *
+    ` as UserRow[]
+    return json({ user: publicUser(updated[0]) })
+  } catch (err) {
+    if (isUniqueViolation(err)) throw new HttpError(409, 'Another account already uses that email')
+    throw err
+  }
+}
+
+// Setting a new password signs the user out everywhere (except the admin's own current session)
+async function setUserPassword(req: Request, id: string) {
+  const admin = await requireAdmin(req)
+  const password = (await readBody(req)).password
+  if (typeof password !== 'string' || password.length < 8) throw new HttpError(400, 'Password must be at least 8 characters')
+
+  const rows = await db()`UPDATE users SET password_hash = ${await hashPassword(password)}, updated_at = now() WHERE id = ${id} RETURNING id`
+  if (!rows[0]) throw new HttpError(404, 'User not found')
+  if (id !== admin.id) await db()`DELETE FROM sessions WHERE user_id = ${id}`
+  return json({ ok: true })
+}
+
+// Removes the account along with its sessions, customers and signatures (ON DELETE CASCADE)
+async function deleteUser(req: Request, id: string) {
+  const admin = await requireAdmin(req)
+  if (id === admin.id) throw new HttpError(400, "You can't delete your own account")
+  const rows = await db()`DELETE FROM users WHERE id = ${id} RETURNING id`
+  if (!rows[0]) throw new HttpError(404, 'User not found')
+  return json({ ok: true })
 }
 
 async function setUserStatus(req: Request, id: string) {
@@ -392,6 +467,10 @@ const routes: [string, RegExp, Handler][] = [
   ['PUT', new RegExp(`^/api/customers/${UUID}$`), renameCustomer],
   ['DELETE', new RegExp(`^/api/customers/${UUID}$`), deleteCustomer],
   ['GET', /^\/api\/admin\/users$/, listUsers],
+  ['POST', /^\/api\/admin\/users$/, createUser],
+  ['PUT', new RegExp(`^/api/admin/users/${UUID}$`), updateUser],
+  ['DELETE', new RegExp(`^/api/admin/users/${UUID}$`), deleteUser],
+  ['POST', new RegExp(`^/api/admin/users/${UUID}/password$`), setUserPassword],
   ['POST', new RegExp(`^/api/admin/users/${UUID}/status$`), setUserStatus],
   ['POST', new RegExp(`^/api/admin/users/${UUID}/role$`), setUserRole],
 ]

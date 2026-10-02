@@ -53,3 +53,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS customers_user_name_idx ON customers (user_id,
 ALTER TABLE signatures ADD COLUMN IF NOT EXISTS customer_id uuid REFERENCES customers (id) ON DELETE SET NULL;
 
 CREATE INDEX IF NOT EXISTS signatures_customer_id_idx ON signatures (customer_id);
+
+-- Header branding options: hide the business name text (e.g. when the logo already shows it) and an optional tagline
+ALTER TABLE users ADD COLUMN IF NOT EXISTS show_business_name boolean NOT NULL DEFAULT true;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS tagline text NOT NULL DEFAULT '';

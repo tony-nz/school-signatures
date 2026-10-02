@@ -19,6 +19,8 @@ export interface UserRow {
   business_name: string
   contact_name: string
   logo: string
+  show_business_name: boolean
+  tagline: string
   role: 'retailer' | 'admin'
   status: 'pending' | 'approved' | 'rejected'
   created_at: string
@@ -32,6 +34,8 @@ export function publicUser(u: UserRow) {
     businessName: u.business_name,
     contactName: u.contact_name,
     logo: u.logo,
+    showBusinessName: u.show_business_name,
+    tagline: u.tagline,
     role: u.role,
     status: u.status,
     createdAt: u.created_at,

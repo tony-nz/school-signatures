@@ -35,7 +35,7 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = null
   }
 
-  async function updateAccount(input: { businessName?: string; contactName?: string; logo?: string }) {
+  async function updateAccount(input: { businessName?: string; contactName?: string; logo?: string; showBusinessName?: boolean; tagline?: string }) {
     const r = await api<{ user: User }>('/account', { method: 'PUT', body: input })
     user.value = r.user
   }
