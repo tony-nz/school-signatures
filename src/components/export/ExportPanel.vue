@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { useExport } from "../../composables/useExport";
 import { useSignatureStore } from "../../stores/signature";
-import { presets } from "../../presets";
+import { useSavedSignaturesStore } from "../../stores/savedSignatures";
 
 const { copyForGmail, downloadMailSignature, downloadHtml, copyHtml } =
   useExport();
@@ -13,14 +13,53 @@ const showMacInstructions = ref(false);
 const importError = ref<string | null>(null);
 const fileInput = ref<HTMLInputElement | null>(null);
 
-const selectedPresetId = ref("");
+const saved = useSavedSignaturesStore();
+const switching = ref(false);
 
-function applyPreset() {
-  const preset = presets.find((p) => p.id === selectedPresetId.value);
-  if (!preset) return;
-  store.importSettings(preset.payload);
-  feedback.value = `"${preset.name}" applied!`;
-  setTimeout(() => (feedback.value = null), 2500);
+// Footer switcher is two-step: pick a customer, then one of its signatures
+const NO_CUSTOMER = "none";
+const footerCustomer = ref<string>("");
+const hasUncategorised = computed(() => saved.list.some((s) => !s.customerId));
+const footerSignatures = computed(() =>
+  saved.list
+    .filter((s) => (s.customerId ?? NO_CUSTOMER) === footerCustomer.value)
+    .sort((a, b) => a.name.localeCompare(b.name)),
+);
+
+// Follow the open signature's customer; otherwise default to the first customer that has signatures
+watch(
+  () => [saved.current?.id, saved.loaded, saved.customers.length] as const,
+  () => {
+    const sig = saved.list.find((s) => s.id === saved.current?.id);
+    if (sig) footerCustomer.value = sig.customerId ?? NO_CUSTOMER;
+    else if (!footerCustomer.value) {
+      const first = saved.customers.find((c) => saved.list.some((s) => s.customerId === c.id));
+      footerCustomer.value = first?.id ?? (hasUncategorised.value ? NO_CUSTOMER : "");
+    }
+  },
+  { immediate: true },
+);
+
+// Quick switch: opens the chosen saved signature straight into the editor
+async function switchSignature(e: Event) {
+  const select = e.target as HTMLSelectElement;
+  const id = select.value;
+  if (!id) return;
+  if (!saved.confirmDiscard()) {
+    select.value = saved.current?.id ?? "";
+    return;
+  }
+  switching.value = true;
+  try {
+    await saved.open(id);
+    feedback.value = `"${saved.current?.name}" opened`;
+  } catch (err) {
+    feedback.value = (err as Error).message;
+    select.value = saved.current?.id ?? "";
+  } finally {
+    switching.value = false;
+    setTimeout(() => (feedback.value = null), 2500);
+  }
 }
 
 async function handle(fn: () => void | Promise<void>, message: string) {
@@ -129,7 +168,7 @@ function onImportFile(e: Event) {
       </div>
     </div>
 
-    <!-- Row 2: export buttons + preset inline -->
+    <!-- Row 2: export buttons + saved signature switcher (right) -->
     <div class="flex items-center gap-1.5 flex-wrap">
       <button
         @click="handle(copyForGmail, 'Copied for Gmail!')"
@@ -182,26 +221,35 @@ function onImportFile(e: Event) {
         HTML
       </button>
 
-      <!-- Divider pip -->
-      <span class="text-slate-200 dark:text-slate-700 select-none">|</span>
-
-      <!-- Preset inline -->
-      <select
-        v-model="selectedPresetId"
-        class="text-xs border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-300 transition"
-      >
-        <option value="" disabled>Preset…</option>
-        <option v-for="p in presets" :key="p.id" :value="p.id">
-          {{ p.name }}
-        </option>
-      </select>
-      <button
-        @click="applyPreset"
-        :disabled="!selectedPresetId"
-        class="export-btn bg-emerald-600 border-emerald-600 text-white hover:bg-emerald-700 hover:border-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed"
-      >
-        Apply
-      </button>
+      <!-- Quick switch between saved signatures: customer, then signature -->
+      <div class="ml-auto flex items-center gap-1.5">
+        <span class="text-xs font-medium text-slate-500 dark:text-slate-400">My signature</span>
+        <select
+          v-model="footerCustomer"
+          :disabled="!saved.list.length"
+          title="Customer"
+          class="switch-select max-w-[160px]"
+        >
+          <option value="" disabled>{{ !saved.loaded ? "Loading…" : "Customer…" }}</option>
+          <option v-for="c in saved.customers" :key="c.id" :value="c.id">{{ c.name }}</option>
+          <option v-if="hasUncategorised" :value="NO_CUSTOMER">No customer</option>
+        </select>
+        <select
+          @change="switchSignature"
+          :disabled="switching || !footerSignatures.length"
+          title="Signature"
+          class="switch-select max-w-[200px]"
+        >
+          <option value="" disabled :selected="!footerSignatures.some((s) => s.id === saved.current?.id)">
+            {{ !saved.loaded ? "Loading…" : !saved.list.length ? "None saved yet" : footerSignatures.length ? "Choose…" : "No signatures" }}
+          </option>
+          <!-- :selected per option (not :value on the select) so the choice still applies when
+               the options and the selection arrive together after a page refresh -->
+          <option v-for="s in footerSignatures" :key="s.id" :value="s.id" :selected="s.id === saved.current?.id">
+            {{ s.name }}
+          </option>
+        </select>
+      </div>
     </div>
 
     <!-- Mac Mail Instructions Modal -->
@@ -266,6 +314,10 @@ const steps = [
 </script>
 
 <style scoped>
+.switch-select {
+  @apply text-xs border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 text-slate-600 dark:text-slate-300
+    bg-white dark:bg-slate-800 focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-300 disabled:opacity-50 transition;
+}
 .export-btn {
   @apply flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-medium
     text-slate-600 bg-white transition-all cursor-pointer

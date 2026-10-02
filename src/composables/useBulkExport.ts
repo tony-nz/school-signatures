@@ -7,7 +7,7 @@ function sanitizeFilename(name: string): string {
   return name.replace(/[^a-zA-Z0-9_-]/g, '_').replace(/_+/g, '_').toLowerCase() || 'signature'
 }
 
-function buildSignatureData(baseData: SignatureData, row: BulkRow): SignatureData {
+export function buildSignatureData(baseData: SignatureData, row: BulkRow): SignatureData {
   return {
     ...baseData,
     name: row.name || baseData.name,
@@ -17,6 +17,8 @@ function buildSignatureData(baseData: SignatureData, row: BulkRow): SignatureDat
     mobile: row.mobile || baseData.mobile,
     website: row.website || baseData.website,
     address: row.address || baseData.address,
+    // A custom map link belongs to the base address, so fall back to a maps search for per-row addresses
+    addressUrl: row.address ? '' : baseData.addressUrl,
     tagline: row.tagline || baseData.tagline,
     avatar: row.avatar || baseData.avatar,
   }

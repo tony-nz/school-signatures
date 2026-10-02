@@ -29,6 +29,7 @@ export const presets: SignaturePreset[] = [
         avatar: "https://school-signatures.netlify.app/logo.png",
         logo: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSToP5rz4ky9W48e8f3kQ8gdA_b7fyyjP68Eg&s",
         socials: {
+          facebook: "",
           linkedin: "",
           twitter: "",
           github: "",

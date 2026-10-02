@@ -9,7 +9,7 @@ const emit = defineEmits<{ (e: 'update:modelValue', v: boolean): void }>()
     role="switch"
     :aria-checked="props.modelValue"
     @click="emit('update:modelValue', !props.modelValue)"
-    class="relative inline-flex h-4 w-7 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-150 focus:outline-none"
+    class="relative inline-flex h-4 w-7 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-150 focus:outline-none before:absolute before:-inset-y-2 before:-left-3 before:-right-2 before:content-['']"
     :class="props.modelValue ? 'bg-indigo-500' : 'bg-gray-200 dark:bg-slate-600'"
   >
     <span

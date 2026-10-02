@@ -1,5 +1,5 @@
 import type { SignatureTemplate, SignatureData } from '../types'
-import { fontCss, fontSizePx, logoDimPx, dividerHtml, renderSocials, ctaHtml, meetingHtml, disclaimerHtml, resolveColors } from './helpers'
+import { fontCss, fontSizePx, logoSizing, logoRadiusCss, dividerHtml, renderSocials, ctaHtml, meetingHtml, disclaimerHtml, resolveColors, addressHtml, padImage } from './helpers'
 
 export const minimalTemplate: SignatureTemplate = {
   id: 'minimal',
@@ -21,11 +21,11 @@ export const minimalTemplate: SignatureTemplate = {
       data.email ? `<a href="mailto:${data.email}" style="color:${color};text-decoration:none;">${data.email}</a>` : '',
       data.phone ? `<a href="tel:${data.phone}" style="color:${fc.body};text-decoration:none;">${data.phone}</a>` : '',
       data.mobile ? `<a href="tel:${data.mobile}" style="color:${fc.body};text-decoration:none;">${data.mobile}</a>` : '',
-      data.website ? `<a href="https://${data.website.replace(/^https?:\/\//, '')}" style="color:${color};text-decoration:none;">${data.website}</a>` : '',
+      data.website ? `<a href="https://${data.website.replace(/^https?:\/\//, '')}" target="_blank" rel="noopener noreferrer" style="color:${color};text-decoration:none;">${data.website}</a>` : '',
     ].filter(Boolean).join(' &nbsp;&middot;&nbsp; ')
 
     const logoHtml = (data.visibility.logo && data.logo)
-      ? (() => { const ld = logoDimPx(data); return `<tr><td style="padding-top:8px;"><img src="${data.logo}" width="${ld}" style="display:block;max-height:${ld}px;object-fit:contain;" /></td></tr>` })()
+      ? (() => { const ls = logoSizing(data); return `<tr><td style="padding-top:8px;">${padImage(`<img src="${data.logo}" ${ls.attrs} style="display:block;${ls.css}object-fit:contain;border-radius:${logoRadiusCss(data)};" />`, data.style.logoPaddingPx)}</td></tr>` })()
       : ''
 
     return `
@@ -38,7 +38,7 @@ export const minimalTemplate: SignatureTemplate = {
         ${data.tagline ? `<tr><td style="font-size:${sz.meta}px;color:${color};font-style:italic;">${data.tagline}</td></tr>` : ''}
         ${dividerHtml(data, color)}
         ${contactLine ? `<tr><td style="padding-top:4px;font-size:${sz.base}px;">${contactLine}</td></tr>` : ''}
-        ${data.address ? `<tr><td style="font-size:${sz.small}px;color:${fc.muted};">${data.address}</td></tr>` : ''}
+        ${data.address ? `<tr><td style="font-size:${sz.small}px;color:${fc.muted};">${addressHtml(data, fc.muted)}</td></tr>` : ''}
         ${meetingHtml(data, color)}
         ${renderSocials(data, color)}
         ${ctaHtml(data)}

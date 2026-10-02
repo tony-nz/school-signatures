@@ -1,5 +1,5 @@
 import type { SignatureTemplate, SignatureData } from '../types'
-import { fontCss, fontSizePx, avatarRadiusCss, avatarDimPx, logoDimPx, dividerHtml, renderSocials, ctaHtml, meetingHtml, disclaimerHtml, resolveColors } from './helpers'
+import { fontCss, fontSizePx, avatarRadiusCss, avatarDimPx, logoSizing, logoRadiusCss, dividerHtml, renderSocials, ctaHtml, meetingHtml, disclaimerHtml, resolveColors, addressHtml, padImage } from './helpers'
 
 export const stackedTemplate: SignatureTemplate = {
   id: 'stacked',
@@ -16,11 +16,11 @@ export const stackedTemplate: SignatureTemplate = {
 
     const leftParts: string[] = []
     if (data.visibility.avatar && data.avatar) {
-      leftParts.push(`<img src="${data.avatar}" width="${avatarDim}" height="${avatarDim}" style="border-radius:${radius};display:block;object-fit:cover;" />`)
+      leftParts.push(padImage(`<img src="${data.avatar}" width="${avatarDim}" height="${avatarDim}" style="border-radius:${radius};display:block;object-fit:cover;" />`, data.style.avatarPaddingPx))
     }
     if (data.visibility.logo && data.logo) {
-      const ld = logoDimPx(data)
-      leftParts.push(`<img src="${data.logo}" width="${ld}" style="display:block;max-height:${ld}px;object-fit:contain;${leftParts.length ? 'margin-top:8px;' : ''}" />`)
+      const ls = logoSizing(data)
+      leftParts.push(padImage(`<img src="${data.logo}" ${ls.attrs} style="display:block;${ls.css}object-fit:contain;border-radius:${logoRadiusCss(data)};${leftParts.length ? 'margin-top:8px;' : ''}" />`, data.style.logoPaddingPx))
     }
     const avatarCell = leftParts.length
       ? `<td style="padding-right:16px;vertical-align:top;">${leftParts.join('')}</td>`
@@ -30,7 +30,7 @@ export const stackedTemplate: SignatureTemplate = {
     if (data.email) contacts.push(`<a href="mailto:${data.email}" style="color:${fc.body};text-decoration:none;">${data.email}</a>`)
     if (data.phone) contacts.push(`<a href="tel:${data.phone}" style="color:${fc.body};text-decoration:none;">${data.phone}</a>`)
     if (data.mobile) contacts.push(`<a href="tel:${data.mobile}" style="color:${fc.body};text-decoration:none;">${data.mobile}</a>`)
-    if (data.website) contacts.push(`<a href="https://${data.website.replace(/^https?:\/\//, '')}" style="color:${fc.body};text-decoration:none;">${data.website}</a>`)
+    if (data.website) contacts.push(`<a href="https://${data.website.replace(/^https?:\/\//, '')}" target="_blank" rel="noopener noreferrer" style="color:${fc.body};text-decoration:none;">${data.website}</a>`)
     const contactLine = contacts.join(' <span style="color:#d1d5db;"> | </span> ')
 
     return `
@@ -45,7 +45,7 @@ export const stackedTemplate: SignatureTemplate = {
         ${data.tagline ? `<tr><td style="font-size:${sz.small}px;color:${color};font-style:italic;padding-top:1px;">${data.tagline}</td></tr>` : ''}
         ${dividerHtml(data, color)}
         ${contacts.length ? `<tr><td style="padding-top:6px;font-size:${sz.base}px;">${contactLine}</td></tr>` : ''}
-        ${data.address ? `<tr><td style="font-size:${sz.small}px;color:${fc.muted};padding-top:2px;">${data.address}</td></tr>` : ''}
+        ${data.address ? `<tr><td style="font-size:${sz.small}px;color:${fc.muted};padding-top:2px;">${addressHtml(data, fc.muted)}</td></tr>` : ''}
         ${meetingHtml(data, color)}
         ${renderSocials(data, color)}
         ${ctaHtml(data)}

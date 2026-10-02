@@ -6,17 +6,24 @@ const store = useSignatureStore()
 </script>
 
 <template>
-  <div class="flex gap-1">
-    <button
-      v-for="template in templates"
-      :key="template.id"
-      @click="store.selectTemplate(template.id)"
-      class="px-4 py-1.5 rounded-full text-sm font-medium transition-all"
-      :class="store.selectedTemplateId === template.id
-        ? 'bg-indigo-600 text-white shadow-sm'
-        : 'text-slate-500 dark:text-slate-400 hover:text-indigo-700 dark:hover:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30'"
+  <label class="flex items-center gap-2">
+    <span class="text-xs font-medium text-slate-500 dark:text-slate-400">Style</span>
+    <select
+      :value="store.selectedTemplateId"
+      @change="store.selectTemplate(($event.target as HTMLSelectElement).value)"
+      class="select"
     >
-      {{ template.name }}
-    </button>
-  </div>
+      <option v-for="template in templates" :key="template.id" :value="template.id">
+        {{ template.name }}
+      </option>
+    </select>
+  </label>
 </template>
+
+<style scoped>
+.select {
+  @apply w-44 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm font-medium text-slate-800
+    focus:outline-none focus:ring-2 focus:ring-indigo-400 cursor-pointer
+    dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100;
+}
+</style>

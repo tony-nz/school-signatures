@@ -1,22 +1,11 @@
 <script setup lang="ts">
 import { useSignatureStore } from '../../stores/signature'
-import type { FontFamily, AvatarShape, AvatarSize, FontSize, DividerStyle, SocialStyle } from '../../types'
+import type { FontFamily, FontSize, DividerStyle, SocialStyle } from '../../types'
 
 const store = useSignatureStore()
 
 const fonts: FontFamily[] = ['Arial', 'Georgia', 'Trebuchet MS', 'Verdana', 'Raleway', 'Lato', 'Nunito', 'Poppins', 'Merriweather', 'Playfair Display']
 const fontSizes: { value: FontSize; label: string }[] = [
-  { value: 'sm', label: 'S' },
-  { value: 'md', label: 'M' },
-  { value: 'lg', label: 'L' },
-  { value: 'custom', label: 'Custom' },
-]
-const shapes: { value: AvatarShape; label: string }[] = [
-  { value: 'circle', label: '●' },
-  { value: 'rounded', label: '▣' },
-  { value: 'square', label: '■' },
-]
-const sizes: { value: AvatarSize; label: string }[] = [
   { value: 'sm', label: 'S' },
   { value: 'md', label: 'M' },
   { value: 'lg', label: 'L' },
@@ -60,51 +49,6 @@ const socialStyles: { value: SocialStyle; label: string }[] = [
           class="custom-num"
         />
         <span class="unit">px base size</span>
-      </div>
-    </div>
-
-    <!-- Avatar shape -->
-    <div class="field">
-      <label>Photo Shape</label>
-      <div class="btn-group">
-        <button v-for="s in shapes" :key="s.value" @click="store.data.style.avatarShape = s.value"
-          :class="store.data.style.avatarShape === s.value ? 'active' : ''" class="seg-btn">{{ s.label }}</button>
-      </div>
-    </div>
-
-    <!-- Avatar size -->
-    <div class="field">
-      <label>Photo Size</label>
-      <div class="btn-group">
-        <button v-for="s in sizes" :key="s.value" @click="store.data.style.avatarSize = s.value"
-          :class="store.data.style.avatarSize === s.value ? 'active' : ''" class="seg-btn">{{ s.label }}</button>
-      </div>
-      <div v-if="store.data.style.avatarSize === 'custom'" class="custom-row">
-        <input
-          type="number"
-          v-model.number="store.data.style.avatarSizeCustomPx"
-          min="24" max="120"
-          class="custom-num"
-        />
-        <span class="unit">px</span>
-      </div>
-    </div>
-
-    <!-- Logo size -->
-    <div class="field">
-      <label>Logo Size</label>
-      <div class="btn-group">
-        <button v-for="s in sizes" :key="s.value" @click="store.data.style.logoSize = s.value"
-          :class="store.data.style.logoSize === s.value ? 'active' : ''" class="seg-btn">{{ s.label }}</button>
-      </div>
-      <div v-if="store.data.style.logoSize === 'custom'" class="custom-row">
-        <input
-          type="number"
-          v-model.number="store.data.style.logoSizeCustomPx"
-          min="16" max="120"
-          class="custom-num"
-        />
-        <span class="unit">px</span>
       </div>
     </div>
 

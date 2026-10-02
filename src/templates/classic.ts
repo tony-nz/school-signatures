@@ -1,5 +1,5 @@
 import type { SignatureTemplate, SignatureData } from '../types'
-import { fontCss, fontSizePx, avatarRadiusCss, avatarDimPx, logoDimPx, dividerHtml, renderSocials, ctaHtml, meetingHtml, disclaimerHtml, resolveColors } from './helpers'
+import { fontCss, fontSizePx, avatarRadiusCss, avatarDimPx, logoSizing, logoRadiusCss, dividerHtml, renderSocials, ctaHtml, meetingHtml, disclaimerHtml, resolveColors, addressHtml, padImage } from './helpers'
 
 export const classicTemplate: SignatureTemplate = {
   id: 'classic',
@@ -16,11 +16,11 @@ export const classicTemplate: SignatureTemplate = {
 
     const leftParts: string[] = []
     if (data.visibility.avatar && data.avatar) {
-      leftParts.push(`<img src="${data.avatar}" width="${avatarDim}" height="${avatarDim}" style="border-radius:${radius};display:block;object-fit:cover;" />`)
+      leftParts.push(padImage(`<img src="${data.avatar}" width="${avatarDim}" height="${avatarDim}" style="border-radius:${radius};display:block;object-fit:cover;" />`, data.style.avatarPaddingPx))
     }
     if (data.visibility.logo && data.logo) {
-      const ld = logoDimPx(data)
-      leftParts.push(`<img src="${data.logo}" width="${ld}" style="display:block;max-height:${ld}px;object-fit:contain;${leftParts.length ? 'margin-top:8px;' : ''}" />`)
+      const ls = logoSizing(data)
+      leftParts.push(padImage(`<img src="${data.logo}" ${ls.attrs} style="display:block;${ls.css}object-fit:contain;border-radius:${logoRadiusCss(data)};${leftParts.length ? 'margin-top:8px;' : ''}" />`, data.style.logoPaddingPx))
     }
     const avatarCell = leftParts.length
       ? `<td style="padding-right:16px;vertical-align:top;">${leftParts.join('')}</td>`
@@ -40,8 +40,8 @@ export const classicTemplate: SignatureTemplate = {
         ${data.email ? `<tr><td style="padding-top:6px;font-size:${sz.base}px;color:${fc.body};">${data.email}</td></tr>` : ''}
         ${data.phone ? `<tr><td style="font-size:${sz.base}px;color:${fc.body};">${data.phone}</td></tr>` : ''}
         ${data.mobile ? `<tr><td style="font-size:${sz.base}px;color:${fc.body};">M: ${data.mobile}</td></tr>` : ''}
-        ${data.website ? `<tr><td style="font-size:${sz.base}px;color:${fc.body};">${data.website}</td></tr>` : ''}
-        ${data.address ? `<tr><td style="font-size:${sz.small}px;color:${fc.muted};padding-top:2px;">${data.address}</td></tr>` : ''}
+        ${data.website ? `<tr><td style="font-size:${sz.base}px;"><a href="https://${data.website.replace(/^https?:\/\//, '')}" target="_blank" rel="noopener noreferrer" style="color:${fc.body};text-decoration:none;">${data.website}</a></td></tr>` : ''}
+        ${data.address ? `<tr><td style="font-size:${sz.small}px;color:${fc.muted};padding-top:2px;">${addressHtml(data, fc.muted)}</td></tr>` : ''}
         ${meetingHtml(data, color)}
         ${renderSocials(data, color)}
         ${ctaHtml(data)}

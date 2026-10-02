@@ -1,5 +1,5 @@
 import type { SignatureTemplate, SignatureData } from '../types'
-import { fontCss, fontSizePx, logoDimPx, renderSocials, ctaHtml, meetingHtml, disclaimerHtml, resolveColors } from './helpers'
+import { fontCss, fontSizePx, logoSizing, logoRadiusCss, renderSocials, ctaHtml, meetingHtml, disclaimerHtml, resolveColors, addressHtml, padImage } from './helpers'
 
 export const compactTemplate: SignatureTemplate = {
   id: 'compact',
@@ -20,10 +20,10 @@ export const compactTemplate: SignatureTemplate = {
     if (data.email) contacts.push(`<a href="mailto:${data.email}" style="color:${color};text-decoration:none;">${data.email}</a>`)
     if (data.phone) contacts.push(`<a href="tel:${data.phone}" style="color:${fc.body};text-decoration:none;">${data.phone}</a>`)
     if (data.mobile) contacts.push(`<a href="tel:${data.mobile}" style="color:${fc.body};text-decoration:none;">${data.mobile}</a>`)
-    if (data.website) contacts.push(`<a href="https://${data.website.replace(/^https?:\/\//, '')}" style="color:${color};text-decoration:none;">${data.website}</a>`)
+    if (data.website) contacts.push(`<a href="https://${data.website.replace(/^https?:\/\//, '')}" target="_blank" rel="noopener noreferrer" style="color:${color};text-decoration:none;">${data.website}</a>`)
 
     const logoHtml = (data.visibility.logo && data.logo)
-      ? (() => { const ld = logoDimPx(data); return `<tr><td style="padding-top:6px;"><img src="${data.logo}" width="${ld}" style="display:block;max-height:${ld}px;object-fit:contain;" /></td></tr>` })()
+      ? (() => { const ls = logoSizing(data); return `<tr><td style="padding-top:6px;">${padImage(`<img src="${data.logo}" ${ls.attrs} style="display:block;${ls.css}object-fit:contain;border-radius:${logoRadiusCss(data)};" />`, data.style.logoPaddingPx)}</td></tr>` })()
       : ''
 
     return `
@@ -32,7 +32,7 @@ export const compactTemplate: SignatureTemplate = {
     <tr><td style="padding-bottom:2px;">${parts.join(' <span style="color:#d1d5db;">&nbsp;|&nbsp;</span> ')}</td></tr>
     ${contacts.length ? `<tr><td style="font-size:${sz.meta}px;">${contacts.join(' <span style="color:#d1d5db;">&nbsp;&middot;&nbsp;</span> ')}</td></tr>` : ''}
     ${data.tagline ? `<tr><td style="font-size:${sz.small}px;color:${fc.muted};font-style:italic;">${data.tagline}</td></tr>` : ''}
-    ${data.address ? `<tr><td style="font-size:${sz.small}px;color:${fc.muted};">${data.address}</td></tr>` : ''}
+    ${data.address ? `<tr><td style="font-size:${sz.small}px;color:${fc.muted};">${addressHtml(data, fc.muted)}</td></tr>` : ''}
     ${meetingHtml(data, color)}
     ${renderSocials(data, color)}
     ${ctaHtml(data)}

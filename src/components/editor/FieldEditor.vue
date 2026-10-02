@@ -5,6 +5,7 @@ import AvatarUpload from './AvatarUpload.vue'
 import ColorCustomizer from './ColorCustomizer.vue'
 import ToggleSwitch from './ToggleSwitch.vue'
 import StyleOptions from './StyleOptions.vue'
+import ImageOptions from './ImageOptions.vue'
 import CTAEditor from './CTAEditor.vue'
 
 const store = useSignatureStore()
@@ -44,12 +45,15 @@ function toggle(key: keyof typeof open.value) {
       </button>
       <div v-show="open.personal" class="section-body">
 
-        <div class="flex items-center justify-between">
-          <span class="label">Photo</span>
-          <ToggleSwitch v-model="store.data.visibility.avatar" />
-        </div>
-        <div v-if="store.data.visibility.avatar" class="mt-1 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-100 dark:border-slate-800">
-          <AvatarUpload field="avatar" />
+        <div class="mt-1 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-100 dark:border-slate-800">
+          <div class="flex items-center justify-between" :class="{ 'mb-1.5': store.data.visibility.avatar }">
+            <span class="text-xs font-medium text-gray-500 dark:text-slate-400">Photo</span>
+            <ToggleSwitch v-model="store.data.visibility.avatar" />
+          </div>
+          <template v-if="store.data.visibility.avatar">
+            <AvatarUpload field="avatar" hide-label />
+            <ImageOptions field="avatar" />
+          </template>
         </div>
 
         <div class="grid grid-cols-2 gap-2">
@@ -85,12 +89,15 @@ function toggle(key: keyof typeof open.value) {
       </button>
       <div v-show="open.company" class="section-body">
 
-        <div class="flex items-center justify-between">
-          <span class="label">Logo</span>
-          <ToggleSwitch v-model="store.data.visibility.logo" />
-        </div>
-        <div v-if="store.data.visibility.logo" class="mt-1 mb-1 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-100 dark:border-slate-800">
-          <AvatarUpload field="logo" />
+        <div class="mt-1 mb-1 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-100 dark:border-slate-800">
+          <div class="flex items-center justify-between" :class="{ 'mb-1.5': store.data.visibility.logo }">
+            <span class="text-xs font-medium text-gray-500 dark:text-slate-400">Logo</span>
+            <ToggleSwitch v-model="store.data.visibility.logo" />
+          </div>
+          <template v-if="store.data.visibility.logo">
+            <AvatarUpload field="logo" hide-label />
+            <ImageOptions field="logo" />
+          </template>
         </div>
 
         <div class="grid grid-cols-2 gap-2">
@@ -102,6 +109,14 @@ function toggle(key: keyof typeof open.value) {
             <label>Address</label>
             <input v-model="store.data.address" type="text" placeholder="123 Main St" class="input" />
           </div>
+        </div>
+
+        <div class="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-100 dark:border-slate-800">
+          <div class="flex items-center justify-between" :class="{ 'mb-1.5': store.data.visibility.addressLink }">
+            <span class="text-xs font-medium text-gray-500 dark:text-slate-400">Link address to map</span>
+            <ToggleSwitch v-model="store.data.visibility.addressLink" />
+          </div>
+          <input v-if="store.data.visibility.addressLink" v-model="store.data.addressUrl" type="url" placeholder="Custom map link (optional, defaults to Google Maps)" class="input" />
         </div>
 
       </div>
@@ -160,7 +175,7 @@ function toggle(key: keyof typeof open.value) {
       </div>
       <div v-show="open.socials" class="section-body">
         <div class="grid grid-cols-2 gap-2">
-          <div v-for="key in (['linkedin','twitter','github','instagram','youtube','tiktok'] as const)" :key="key" class="field">
+          <div v-for="key in (['facebook','linkedin','twitter','github','instagram','youtube','tiktok'] as const)" :key="key" class="field">
             <label class="capitalize">{{ key }}</label>
             <input v-model="store.data.socials[key]" type="url" :placeholder="`${key}.com/…`" class="input" />
           </div>
@@ -191,6 +206,29 @@ function toggle(key: keyof typeof open.value) {
           <div v-if="store.data.visibility.meetingUrl" class="flex flex-col gap-1.5">
             <input v-model="store.data.meetingUrl" type="url" placeholder="https://calendly.com/…" class="input" />
             <input v-model="store.data.meetingLabel" type="text" placeholder="Book a meeting" class="input" />
+          </div>
+        </div>
+
+        <div class="feature-row">
+          <div class="flex items-center justify-between mb-2">
+            <span class="label">Footer Banner</span>
+            <ToggleSwitch v-model="store.data.visibility.banner" />
+          </div>
+          <div v-if="store.data.visibility.banner" class="flex flex-col gap-2">
+            <AvatarUpload field="banner" />
+            <div class="field">
+              <label>Banner Link</label>
+              <input v-model="store.data.bannerUrl" type="url" placeholder="https://… (optional)" class="input" />
+            </div>
+            <div class="field">
+              <label>Banner Width</label>
+              <div class="flex items-center gap-2">
+                <div class="w-24 flex-shrink-0">
+                  <input v-model.number="store.data.bannerWidthPx" type="number" min="100" max="700" placeholder="400" class="input" />
+                </div>
+                <span class="text-xs text-slate-400">px (height scales automatically)</span>
+              </div>
+            </div>
           </div>
         </div>
 

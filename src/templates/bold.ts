@@ -1,5 +1,5 @@
 import type { SignatureTemplate, SignatureData } from '../types'
-import { fontCss, fontSizePx, avatarRadiusCss, avatarDimPx, logoDimPx, renderSocials, ctaHtml, meetingHtml, disclaimerHtml, resolveColors } from './helpers'
+import { fontCss, fontSizePx, avatarRadiusCss, avatarDimPx, logoSizing, logoRadiusCss, renderSocials, ctaHtml, meetingHtml, disclaimerHtml, resolveColors, addressHtml, padImage } from './helpers'
 
 export const boldTemplate: SignatureTemplate = {
   id: 'bold',
@@ -14,11 +14,11 @@ export const boldTemplate: SignatureTemplate = {
     const dim = avatarDimPx(data)
     const radius = avatarRadiusCss(data)
     const avatarHtml = (data.visibility.avatar && data.avatar)
-      ? `<img src="${data.avatar}" width="${dim}" height="${dim}" style="border-radius:${radius};display:block;object-fit:cover;border:2px solid rgba(255,255,255,0.3);" />`
+      ? padImage(`<img src="${data.avatar}" width="${dim}" height="${dim}" style="border-radius:${radius};display:block;object-fit:cover;border:2px solid rgba(255,255,255,0.3);" />`, data.style.avatarPaddingPx)
       : ''
 
     const logoHtml = (data.visibility.logo && data.logo)
-      ? (() => { const ld = logoDimPx(data); return `<tr><td style="padding-top:8px;"><img src="${data.logo}" width="${ld}" style="display:block;max-height:${ld}px;object-fit:contain;" /></td></tr>` })()
+      ? (() => { const ls = logoSizing(data); return `<tr><td style="padding-top:8px;">${padImage(`<img src="${data.logo}" ${ls.attrs} style="display:block;${ls.css}object-fit:contain;border-radius:${logoRadiusCss(data)};" />`, data.style.logoPaddingPx)}</td></tr>` })()
       : ''
 
     const metaParts: string[] = []
@@ -50,8 +50,8 @@ export const boldTemplate: SignatureTemplate = {
           ${data.email ? `<tr><td style="font-size:${sz.base}px;padding-bottom:2px;"><a href="mailto:${data.email}" style="color:${color};text-decoration:none;">${data.email}</a></td></tr>` : ''}
           ${data.phone ? `<tr><td style="font-size:${sz.base}px;padding-bottom:2px;"><a href="tel:${data.phone}" style="color:${fc.body};text-decoration:none;">${data.phone}</a></td></tr>` : ''}
           ${data.mobile ? `<tr><td style="font-size:${sz.base}px;padding-bottom:2px;color:${fc.title};">M: <a href="tel:${data.mobile}" style="color:${fc.body};text-decoration:none;">${data.mobile}</a></td></tr>` : ''}
-          ${data.website ? `<tr><td style="font-size:${sz.base}px;padding-bottom:2px;"><a href="https://${data.website.replace(/^https?:\/\//, '')}" style="color:${color};text-decoration:none;">${data.website}</a></td></tr>` : ''}
-          ${data.address ? `<tr><td style="font-size:${sz.small}px;color:${fc.muted};">${data.address}</td></tr>` : ''}
+          ${data.website ? `<tr><td style="font-size:${sz.base}px;padding-bottom:2px;"><a href="https://${data.website.replace(/^https?:\/\//, '')}" target="_blank" rel="noopener noreferrer" style="color:${color};text-decoration:none;">${data.website}</a></td></tr>` : ''}
+          ${data.address ? `<tr><td style="font-size:${sz.small}px;color:${fc.muted};">${addressHtml(data, fc.muted)}</td></tr>` : ''}
           ${meetingHtml(data, color)}
           ${renderSocials(data, color)}
           ${ctaHtml(data)}

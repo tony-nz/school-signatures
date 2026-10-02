@@ -1,0 +1,22 @@
+/* Shared form styles for the account pages (imported into scoped styles) */
+.card {
+  @apply rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-5;
+}
+.field {
+  @apply flex flex-col gap-1.5;
+}
+.field > span {
+  @apply text-xs font-medium text-slate-500 dark:text-slate-400;
+}
+.input {
+  @apply w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800
+    placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent
+    dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-600;
+}
+.btn-primary {
+  @apply text-sm font-medium px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 transition;
+}
+.btn-secondary {
+  @apply text-xs font-medium px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition
+    dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700;
+}

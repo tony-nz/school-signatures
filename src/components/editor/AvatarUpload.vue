@@ -2,13 +2,13 @@
 import { ref } from 'vue'
 import { useSignatureStore } from '../../stores/signature'
 
-const props = defineProps<{ field: 'avatar' | 'logo' }>()
+const props = defineProps<{ field: 'avatar' | 'logo' | 'banner'; hideLabel?: boolean }>()
 const store = useSignatureStore()
 const inputRef = ref<HTMLInputElement | null>(null)
 const showUrlInput = ref(false)
 const urlInput = ref(store.data[props.field]?.startsWith('http') ? (store.data[props.field] ?? '') : '')
 
-const label = props.field === 'avatar' ? 'Photo' : 'Logo'
+const label = { avatar: 'Photo', logo: 'Logo', banner: 'Banner' }[props.field]
 const current = () => store.data[props.field]
 
 function onFileChange(e: Event) {
@@ -68,7 +68,7 @@ function clear() {
 
 <template>
   <div class="flex flex-col gap-1.5">
-    <label class="text-xs font-medium text-gray-500 dark:text-slate-400">{{ label }}</label>
+    <label v-if="!hideLabel" class="text-xs font-medium text-gray-500 dark:text-slate-400">{{ label }}</label>
 
     <div class="flex items-center gap-2">
       <!-- Thumbnail -->

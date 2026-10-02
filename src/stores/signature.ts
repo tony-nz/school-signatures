@@ -1,4 +1,4 @@
-import { defineStore } from 'pinia'
+import { acceptHMRUpdate, defineStore } from 'pinia'
 import { reactive, ref, computed, watch } from 'vue'
 import type { SignatureData } from '../types'
 import { templates } from '../templates'
@@ -15,13 +15,17 @@ const defaults: SignatureData = {
   mobile: '',
   website: 'acmecorp.com',
   address: '',
+  addressUrl: '',
   tagline: '',
   meetingUrl: '',
   meetingLabel: 'Book a meeting',
   disclaimer: '<strong>Important:</strong> The contents of this email message and any attachments may be confidential and/or privileged information. The contents are intended for the original email recipients only. If you have received this email in error, please contact COMPANY_NAME_HERE immediately and delete this email. Thank you.',
   avatar: '',
   logo: '',
-  socials: { linkedin: '', twitter: '', github: '', instagram: '', youtube: '', tiktok: '' },
+  banner: '',
+  bannerUrl: '',
+  bannerWidthPx: 400,
+  socials: { facebook: '', linkedin: '', twitter: '', github: '', instagram: '', youtube: '', tiktok: '' },
   accentColor: '#10b981',
   fieldColors: { name: '#0e6d34', title: '#6b7280', body: '#374151', muted: '#9ca3af' },
   cta: { text: 'Book a Meeting', url: '', bgColor: '#10b981', textColor: '#ffffff' },
@@ -32,8 +36,12 @@ const defaults: SignatureData = {
     avatarShape: 'circle',
     avatarSize: 'md',
     avatarSizeCustomPx: 56,
+    avatarPaddingPx: 0,
+    logoShape: 'square',
     logoSize: 'md',
     logoSizeCustomPx: 56,
+    logoSizeCustomHeightPx: 0,
+    logoPaddingPx: 0,
     dividerStyle: 'line',
     socialStyle: 'icons',
   },
@@ -45,10 +53,12 @@ const defaults: SignatureData = {
     cta: false,
     disclaimer: false,
     divider: true,
+    addressLink: false,
+    banner: false,
   },
 }
 
-function mergeWithDefaults(d: SignatureData, templateId: string) {
+export function mergeWithDefaults(d: SignatureData, templateId: string) {
   return {
     data: {
       ...defaults,
@@ -66,13 +76,13 @@ function mergeWithDefaults(d: SignatureData, templateId: string) {
 // Top-level string fields on SignatureData that can be set via URL params
 const URL_PARAM_FIELDS = [
   'name', 'title', 'company', 'email', 'phone', 'mobile',
-  'website', 'address', 'tagline', 'meetingUrl', 'meetingLabel',
-  'disclaimer', 'avatar', 'logo', 'accentColor',
+  'website', 'address', 'addressUrl', 'tagline', 'meetingUrl', 'meetingLabel',
+  'disclaimer', 'avatar', 'logo', 'banner', 'bannerUrl', 'accentColor',
 ] as const
 
 // Social platform keys that can be set via URL params (e.g. ?linkedin=janesmith)
 const SOCIAL_FIELDS = [
-  'linkedin', 'twitter', 'github', 'instagram', 'youtube', 'tiktok',
+  'facebook', 'linkedin', 'twitter', 'github', 'instagram', 'youtube', 'tiktok',
 ] as const
 
 function applyUrlParams(result: { data: SignatureData; templateId: string }): { data: SignatureData; templateId: string } {
@@ -221,23 +231,20 @@ export const useSignatureStore = defineStore('signature', () => {
     URL.revokeObjectURL(url)
   }
 
-  function importSettings(json: string): void {
-    const parsed = JSON.parse(json)
-    const incoming = {
-      data: {
-        ...defaults,
-        ...parsed.data,
-        socials: { ...defaults.socials, ...parsed.data?.socials },
-        cta: { ...defaults.cta, ...parsed.data?.cta },
-        style: { ...defaults.style, ...parsed.data?.style },
-        visibility: { ...defaults.visibility, ...parsed.data?.visibility },
-        fieldColors: { ...defaults.fieldColors, ...parsed.data?.fieldColors },
-      },
-      templateId: parsed.templateId ?? 'modern',
-    }
-    Object.assign(data, incoming.data)
-    selectedTemplateId.value = incoming.templateId
+  // Replaces the editor contents, filling any fields missing from older saves
+  function loadSignature(incoming: SignatureData, templateId: string): void {
+    const merged = mergeWithDefaults(incoming, templateId)
+    Object.assign(data, merged.data)
+    selectedTemplateId.value = merged.templateId
   }
 
-  return { data, selectedTemplateId, selectedTemplate, renderedHtml, selectTemplate, lastSaved, exportSettings, importSettings, resetToDemo }
+  function importSettings(json: string): void {
+    const parsed = JSON.parse(json)
+    loadSignature(parsed.data, parsed.templateId)
+  }
+
+  return { data, selectedTemplateId, selectedTemplate, renderedHtml, selectTemplate, lastSaved, exportSettings, importSettings, loadSignature, resetToDemo }
 })
+
+// Lets Vite hot-reload this store in dev without a page refresh
+if (import.meta.hot) import.meta.hot.accept(acceptHMRUpdate(useSignatureStore, import.meta.hot))

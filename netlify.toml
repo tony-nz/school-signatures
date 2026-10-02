@@ -1,0 +1,13 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[functions]
+  directory = "netlify/functions"
+
+# SPA fallback so /login, /admin etc. load the app. /api/* is served by the
+# api function (functions with a `path` config take precedence over redirects).
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

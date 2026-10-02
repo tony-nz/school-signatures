@@ -1,4 +1,5 @@
 export interface SignatureSocials {
+  facebook?: string
   linkedin?: string
   twitter?: string
   github?: string
@@ -22,6 +23,8 @@ export interface SignatureVisibility {
   cta: boolean
   disclaimer: boolean
   divider: boolean
+  addressLink: boolean
+  banner: boolean
 }
 
 export type FontFamily = 'Arial' | 'Georgia' | 'Trebuchet MS' | 'Verdana' | 'Raleway' | 'Lato' | 'Nunito' | 'Poppins' | 'Merriweather' | 'Playfair Display'
@@ -38,8 +41,12 @@ export interface SignatureStyle {
   avatarShape: AvatarShape
   avatarSize: AvatarSize
   avatarSizeCustomPx: number
+  avatarPaddingPx: number
+  logoShape: AvatarShape
   logoSize: AvatarSize
-  logoSizeCustomPx: number
+  logoSizeCustomPx: number // custom width
+  logoSizeCustomHeightPx: number // custom height, 0 = auto
+  logoPaddingPx: number
   dividerStyle: DividerStyle
   socialStyle: SocialStyle
 }
@@ -60,12 +67,16 @@ export interface SignatureData {
   mobile: string
   website: string
   address: string
+  addressUrl: string // custom map link; empty = Google Maps search
   tagline: string
   meetingUrl: string
   meetingLabel: string
   disclaimer: string
   avatar: string
   logo: string
+  banner: string
+  bannerUrl: string
+  bannerWidthPx: number
   socials: SignatureSocials
   accentColor: string
   fieldColors: FieldColors

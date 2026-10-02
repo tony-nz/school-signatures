@@ -1,5 +1,5 @@
 import type { SignatureTemplate, SignatureData } from '../types'
-import { fontCss, fontSizePx, avatarRadiusCss, avatarDimPx, logoDimPx, renderSocials, ctaHtml, meetingHtml, disclaimerHtml, resolveColors } from './helpers'
+import { fontCss, fontSizePx, avatarRadiusCss, avatarDimPx, logoSizing, logoRadiusCss, renderSocials, ctaHtml, meetingHtml, disclaimerHtml, resolveColors, addressHtml, padImage } from './helpers'
 
 export const corporateTemplate: SignatureTemplate = {
   id: 'corporate',
@@ -13,12 +13,13 @@ export const corporateTemplate: SignatureTemplate = {
 
     const showLogo = data.visibility.logo && data.logo
     const logoOrAvatar = showLogo || (data.visibility.avatar && data.avatar)
-    const dim = showLogo ? logoDimPx(data) : avatarDimPx(data)
-    const radius = showLogo ? '4px' : avatarRadiusCss(data)
+    const dim = avatarDimPx(data)
+    const sizing = showLogo ? logoSizing(data) : { attrs: `width="${dim}"`, css: `max-height:${dim}px;` }
+    const radius = showLogo ? logoRadiusCss(data) : avatarRadiusCss(data)
 
     const imageCell = logoOrAvatar
       ? `<td style="padding-right:18px;vertical-align:middle;border-right:2px solid ${color};">
-          <img src="${logoOrAvatar}" width="${dim}" style="display:block;max-height:${dim}px;object-fit:contain;border-radius:${radius};" />
+          ${padImage(`<img src="${logoOrAvatar}" ${sizing.attrs} style="display:block;${sizing.css}object-fit:contain;border-radius:${radius};" />`, (showLogo ? data.style.logoPaddingPx : data.style.avatarPaddingPx))}
         </td><td style="width:14px;"></td>`
       : ''
 
@@ -38,8 +39,8 @@ export const corporateTemplate: SignatureTemplate = {
         ${data.phone ? `<tr><td style="font-size:${sz.base}px;"><span style="color:${fc.muted};">T:&nbsp;</span><a href="tel:${data.phone}" style="color:${fc.body};text-decoration:none;">${data.phone}</a></td></tr>` : ''}
         ${data.mobile ? `<tr><td style="font-size:${sz.base}px;"><span style="color:${fc.muted};">M:&nbsp;</span><a href="tel:${data.mobile}" style="color:${fc.body};text-decoration:none;">${data.mobile}</a></td></tr>` : ''}
         ${data.email ? `<tr><td style="font-size:${sz.base}px;"><span style="color:${fc.muted};">E:&nbsp;</span><a href="mailto:${data.email}" style="color:${color};text-decoration:none;">${data.email}</a></td></tr>` : ''}
-        ${data.website ? `<tr><td style="font-size:${sz.base}px;"><span style="color:${fc.muted};">W:&nbsp;</span><a href="https://${data.website.replace(/^https?:\/\//, '')}" style="color:${color};text-decoration:none;">${data.website}</a></td></tr>` : ''}
-        ${data.address ? `<tr><td style="font-size:${sz.small}px;color:${fc.muted};padding-top:3px;">${data.address}</td></tr>` : ''}
+        ${data.website ? `<tr><td style="font-size:${sz.base}px;"><span style="color:${fc.muted};">W:&nbsp;</span><a href="https://${data.website.replace(/^https?:\/\//, '')}" target="_blank" rel="noopener noreferrer" style="color:${color};text-decoration:none;">${data.website}</a></td></tr>` : ''}
+        ${data.address ? `<tr><td style="font-size:${sz.small}px;color:${fc.muted};padding-top:3px;">${addressHtml(data, fc.muted)}</td></tr>` : ''}
         ${meetingHtml(data, color)}
         ${renderSocials(data, color)}
         ${ctaHtml(data)}
