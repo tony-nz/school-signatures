@@ -222,13 +222,13 @@ function onImportFile(e: Event) {
       </button>
 
       <!-- Quick switch between saved signatures: customer, then signature -->
-      <div class="ml-auto flex items-center gap-1.5">
-        <span class="text-xs font-medium text-slate-500 dark:text-slate-400">My signature</span>
+      <div class="w-full sm:w-auto sm:ml-auto flex items-center gap-1.5">
+        <span class="text-xs font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap">My signature</span>
         <select
           v-model="footerCustomer"
           :disabled="!saved.list.length"
           title="Customer"
-          class="switch-select max-w-[160px]"
+          class="switch-select min-w-0 flex-1 sm:flex-none max-w-[160px]"
         >
           <option value="" disabled>{{ !saved.loaded ? "Loading…" : "Customer…" }}</option>
           <option v-for="c in saved.customers" :key="c.id" :value="c.id">{{ c.name }}</option>
@@ -238,7 +238,7 @@ function onImportFile(e: Event) {
           @change="switchSignature"
           :disabled="switching || !footerSignatures.length"
           title="Signature"
-          class="switch-select max-w-[200px]"
+          class="switch-select min-w-0 flex-1 sm:flex-none max-w-[200px]"
         >
           <option value="" disabled :selected="!footerSignatures.some((s) => s.id === saved.current?.id)">
             {{ !saved.loaded ? "Loading…" : !saved.list.length ? "None saved yet" : footerSignatures.length ? "Choose…" : "No signatures" }}

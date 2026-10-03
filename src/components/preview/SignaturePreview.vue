@@ -65,7 +65,7 @@ function onDrop(e: DragEvent) {
       </div>
 
       <!-- Email body -->
-      <div class="px-5 py-5">
+      <div class="px-4 py-4 sm:px-5 sm:py-5">
         <p class="text-sm text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">
           Hi there,<br /><br />
           Just wanted to follow up on our last conversation. Looking forward to hearing from you soon.
@@ -104,6 +104,7 @@ function onDrop(e: DragEvent) {
   /* isolate the signature from Tailwind resets */
   all: initial;
   display: block;
+  overflow-x: auto;
   font-family: Arial, sans-serif;
 }
 .building :deep([data-el]:hover) {

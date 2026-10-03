@@ -210,8 +210,8 @@ const fmt = (iso: string) => new Date(iso).toLocaleString([], { dateStyle: 'medi
         </div>
         <button @click="saveCurrent" :disabled="busy" class="btn-primary">Save changes</button>
       </div>
-      <div class="flex items-center gap-2">
-        <input v-model="newName" type="text" placeholder="Signature name, e.g. Jane – Sales" class="input flex-1 min-w-0" @keydown.enter="saveNew" />
+      <div class="flex flex-wrap sm:flex-nowrap items-center gap-2">
+        <input v-model="newName" type="text" placeholder="Signature name, e.g. Jane – Sales" class="input basis-full sm:basis-auto flex-1 min-w-0" @keydown.enter="saveNew" />
         <CustomerSelect v-model="newCustomerId" @error="showError" />
         <button @click="saveNew" :disabled="busy" class="btn-secondary whitespace-nowrap">{{ saved.current ? 'Save as new' : 'Save signature' }}</button>
       </div>

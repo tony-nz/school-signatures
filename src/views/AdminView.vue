@@ -189,7 +189,7 @@ onMounted(load)
             :class="f.value === 'pending' && counts.pending && filter !== 'pending' ? 'text-amber-600 font-bold' : 'opacity-60'">{{ counts[f.value] }}</span>
         </button>
       </div>
-      <input v-model="search" type="search" placeholder="Search name or email…" class="input !w-56 !py-1.5 !text-xs" />
+      <input v-model="search" type="search" placeholder="Search name or email…" class="input !w-full sm:!w-56 !py-1.5 !text-xs" />
       <button @click="creating = !creating" class="btn-primary !text-xs !px-3 !py-1.5 ml-auto">
         {{ creating ? 'Cancel' : '+ New account' }}
       </button>
@@ -253,7 +253,7 @@ onMounted(load)
                 · {{ u.customerCount }} customer{{ u.customerCount === 1 ? '' : 's' }}
               </div>
             </div>
-            <div class="flex items-center gap-2">
+            <div class="flex flex-wrap items-center gap-2">
               <template v-if="u.id !== auth.user?.id">
                 <button v-if="u.status === 'pending' && u.matchingCompany" @click="approveInto(u, u.matchingCompany)" class="btn-approve">Approve into {{ u.matchingCompany.name }}</button>
                 <button v-if="u.status !== 'approved'" @click="setStatus(u, 'approved')" :class="u.status === 'pending' && u.matchingCompany ? 'btn-secondary' : 'btn-approve'">
