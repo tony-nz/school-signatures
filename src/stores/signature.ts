@@ -3,6 +3,7 @@ import { reactive, ref, computed, watch } from 'vue'
 import type { SignatureData } from '../types'
 import { templates } from '../templates'
 import { presets } from '../presets'
+import { starterLayout } from '../templates/layouts'
 
 const STORAGE_KEY = 'signature-generator'
 
@@ -58,6 +59,7 @@ const defaults: SignatureData = {
     addressLink: false,
     banner: false,
   },
+  layout: null,
 }
 
 export function mergeWithDefaults(d: SignatureData, templateId: string) {
@@ -70,6 +72,7 @@ export function mergeWithDefaults(d: SignatureData, templateId: string) {
       style: { ...defaults.style, ...d?.style },
       visibility: { ...defaults.visibility, ...d?.visibility },
       fieldColors: { ...defaults.fieldColors, ...d?.fieldColors },
+      layout: d?.layout ?? null,
     },
     templateId: templateId ?? 'modern',
   }
@@ -170,6 +173,11 @@ export const useSignatureStore = defineStore('signature', () => {
   function selectTemplate(id: string) {
     selectedTemplateId.value = id
   }
+
+  // The builder edits a real layout, so Custom always gets one
+  watch([selectedTemplateId, () => data.layout], ([id]) => {
+    if (id === 'custom' && !data.layout) data.layout = starterLayout('simple')
+  }, { immediate: true })
 
   // Auto-save with debounce
   const lastSaved = ref<Date | null>(saved ? new Date() : null)

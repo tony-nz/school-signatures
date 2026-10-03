@@ -6,9 +6,11 @@ import { boldTemplate } from './bold'
 import { compactTemplate } from './compact'
 import { stackedTemplate } from './stacked'
 import { classicTemplate } from './classic'
+import { customTemplate } from './custom'
 import { withBanner } from './helpers'
 
-// Every template gets the footer banner appended beneath it
+// Every built-in template gets the footer banner appended beneath it;
+// the Custom template places it wherever its layout says
 export const templates: SignatureTemplate[] = [
   modernTemplate,
   stackedTemplate,
@@ -17,4 +19,5 @@ export const templates: SignatureTemplate[] = [
   corporateTemplate,
   boldTemplate,
   compactTemplate,
-].map(t => ({ ...t, render: data => withBanner(t.render(data), data) }))
+].map((t): SignatureTemplate => ({ ...t, render: data => withBanner(t.render(data), data) }))
+  .concat(customTemplate)

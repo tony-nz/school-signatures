@@ -5,6 +5,7 @@ import FieldEditor from '../components/editor/FieldEditor.vue'
 import SignaturePreview from '../components/preview/SignaturePreview.vue'
 import ExportPanel from '../components/export/ExportPanel.vue'
 import BulkPanel from '../components/bulk/BulkPanel.vue'
+import BuilderPanel from '../components/builder/BuilderPanel.vue'
 import { useSignatureStore } from '../stores/signature'
 import { useDarkMode } from '../composables/useDarkMode'
 import BrandMark from '../components/account/BrandMark.vue'
@@ -142,14 +143,20 @@ const savedLabel = computed(() => {
         <template v-else-if="mode === 'saved'">
           <SavedSignaturesPanel @opened="mode = 'preview'" />
         </template>
-        <template v-else>
-          <div class="flex-1 min-h-0">
-            <SignaturePreview />
+        <div v-else class="flex-1 min-h-0 flex gap-4">
+          <div class="flex-1 min-w-0 flex flex-col gap-4">
+            <div class="flex-1 min-h-0">
+              <SignaturePreview />
+            </div>
+            <div class="flex-shrink-0">
+              <ExportPanel />
+            </div>
           </div>
-          <div class="flex-shrink-0">
-            <ExportPanel />
+          <!-- Visual builder for the Custom template -->
+          <div v-if="store.selectedTemplateId === 'custom'" class="w-80 flex-shrink-0 min-h-0">
+            <BuilderPanel />
           </div>
-        </template>
+        </div>
       </section>
 
     </main>

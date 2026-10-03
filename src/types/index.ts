@@ -88,6 +88,62 @@ export interface SignatureData {
   cta: SignatureCTA
   style: SignatureStyle
   visibility: SignatureVisibility
+  layout: SignatureLayout | null // used by the Custom template
+}
+
+// ─── Custom layout (visual builder) ──────────────────────────────────────────
+
+// Palette names follow the signature's colors; anything else is a hex value
+export type LayoutColor = 'accent' | 'name' | 'title' | 'body' | 'muted' | (string & {})
+export type LayoutSize = 'name' | 'base' | 'meta' | 'small'
+export type LayoutField = 'name' | 'title' | 'company' | 'tagline' | 'email' | 'phone' | 'mobile' | 'website' | 'address'
+
+export interface LayoutTextStyle {
+  color?: LayoutColor
+  size?: LayoutSize
+  bold?: boolean
+  italic?: boolean
+  underline?: boolean
+}
+
+export type LayoutItem =
+  | ({ id: string; type: 'field'; field: LayoutField; label?: string; labelColor?: LayoutColor; link?: boolean } & LayoutTextStyle)
+  | ({ id: string; type: 'text'; text: string; href?: string } & LayoutTextStyle)
+  | ({ id: string; type: 'separator'; text: string } & LayoutTextStyle)
+  | { id: string; type: 'image'; source: 'logo' | 'avatar' | 'url'; src: string; width: number; href?: string; shape?: AvatarShape }
+  | { id: string; type: 'socials'; color?: LayoutColor }
+  | { id: string; type: 'button' }
+
+export type LayoutItemType = LayoutItem['type']
+
+// One line of inline elements
+export interface LayoutLine {
+  id: string
+  type: 'line'
+  items: LayoutItem[]
+  padTop: number
+}
+
+export interface LayoutColumns {
+  id: string
+  type: 'columns'
+  columns: LayoutLine[][]
+  gap: number
+  padTop: number
+}
+
+export type LayoutBlock =
+  | LayoutLine
+  | LayoutColumns
+  | { id: string; type: 'spacer'; height: number }
+  | { id: string; type: 'divider'; padTop: number; color?: LayoutColor }
+  | { id: string; type: 'banner'; padTop: number }
+  | { id: string; type: 'disclaimer'; padTop: number }
+
+export type LayoutBlockType = LayoutBlock['type']
+
+export interface SignatureLayout {
+  blocks: LayoutBlock[]
 }
 
 export interface SignatureTemplate {
