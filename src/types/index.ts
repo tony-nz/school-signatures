@@ -33,6 +33,9 @@ export type AvatarShape = 'circle' | 'rounded' | 'square'
 export type AvatarSize = 'sm' | 'md' | 'lg' | 'custom'
 export type DividerStyle = 'line' | 'dots' | 'none'
 export type SocialStyle = 'icons' | 'text' | 'both'
+// 'auto' keeps each template's own look
+export type ContactColor = 'auto' | 'accent' | 'text'
+export type ContactLabels = 'auto' | 'none' | 'letters' | 'words'
 
 export interface SignatureStyle {
   fontFamily: FontFamily
@@ -49,6 +52,8 @@ export interface SignatureStyle {
   logoPaddingPx: number
   dividerStyle: DividerStyle
   socialStyle: SocialStyle
+  contactColor: ContactColor
+  contactLabels: ContactLabels
 }
 
 export interface FieldColors {

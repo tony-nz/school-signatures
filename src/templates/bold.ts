@@ -1,5 +1,5 @@
 import type { SignatureTemplate, SignatureData } from '../types'
-import { fontCss, fontSizePx, avatarRadiusCss, avatarDimPx, logoSizing, logoRadiusCss, renderSocials, ctaHtml, meetingHtml, disclaimerHtml, resolveColors, addressHtml, padImage } from './helpers'
+import { contactHtml, fontCss, fontSizePx, avatarRadiusCss, avatarDimPx, logoSizing, logoRadiusCss, renderSocials, ctaHtml, meetingHtml, disclaimerHtml, resolveColors, addressHtml, padImage } from './helpers'
 
 export const boldTemplate: SignatureTemplate = {
   id: 'bold',
@@ -47,10 +47,10 @@ export const boldTemplate: SignatureTemplate = {
     <tr>
       <td style="background:#f9fafb;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px;padding:10px 16px;">
         <table cellpadding="0" cellspacing="0" border="0"><tbody>
-          ${data.email ? `<tr><td style="font-size:${sz.base}px;padding-bottom:2px;"><a href="mailto:${data.email}" style="color:${color};text-decoration:none;">${data.email}</a></td></tr>` : ''}
-          ${data.phone ? `<tr><td style="font-size:${sz.base}px;padding-bottom:2px;"><a href="tel:${data.phone}" style="color:${fc.body};text-decoration:none;">${data.phone}</a></td></tr>` : ''}
-          ${data.mobile ? `<tr><td style="font-size:${sz.base}px;padding-bottom:2px;color:${fc.title};">M: <a href="tel:${data.mobile}" style="color:${fc.body};text-decoration:none;">${data.mobile}</a></td></tr>` : ''}
-          ${data.website ? `<tr><td style="font-size:${sz.base}px;padding-bottom:2px;"><a href="https://${data.website.replace(/^https?:\/\//, '')}" target="_blank" rel="noopener noreferrer" style="color:${color};text-decoration:none;">${data.website}</a></td></tr>` : ''}
+          ${(['email', 'phone', 'mobile', 'website'] as const).map((kind) => {
+            const html = contactHtml(data, kind, color, kind === 'mobile' ? { label: 'M:', labelColor: fc.title } : {})
+            return html ? `<tr><td style="font-size:${sz.base}px;padding-bottom:2px;">${html}</td></tr>` : ''
+          }).join('')}
           ${data.address ? `<tr><td style="font-size:${sz.small}px;color:${fc.muted};">${addressHtml(data, fc.muted)}</td></tr>` : ''}
           ${meetingHtml(data, color)}
           ${renderSocials(data, color)}

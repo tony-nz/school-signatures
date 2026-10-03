@@ -44,6 +44,8 @@ const defaults: SignatureData = {
     logoPaddingPx: 0,
     dividerStyle: 'line',
     socialStyle: 'icons',
+    contactColor: 'auto',
+    contactLabels: 'auto',
   },
   visibility: {
     avatar: true,

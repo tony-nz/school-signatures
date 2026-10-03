@@ -86,6 +86,43 @@ export function addressHtml(data: SignatureData, color: string): string {
   return `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color:${color};text-decoration:none;">${data.address}</a>`
 }
 
+// ─── Contact details ─────────────────────────────────────────────────────────
+
+export type ContactKind = 'email' | 'phone' | 'mobile' | 'website'
+
+const CONTACT_LABELS = {
+  letters: { email: 'E:', phone: 'P:', mobile: 'M:', website: 'W:' },
+  words: { email: 'Email:', phone: 'Phone:', mobile: 'Mobile:', website: 'Web:' },
+}
+
+// What a template shows when the contact style options are on 'auto'
+interface ContactAuto {
+  color?: 'accent' | 'text'
+  label?: string
+  labelColor?: string
+}
+
+// Renders one contact detail as a link (with optional label), applying the
+// Contact Details style options. Returns '' when the field is empty.
+export function contactHtml(data: SignatureData, kind: ContactKind, accent: string, auto: ContactAuto = {}): string {
+  const value = data[kind]
+  if (!value) return ''
+  const fc = resolveColors(data)
+
+  const colorMode = data.style.contactColor === 'auto' ? (auto.color ?? 'accent') : data.style.contactColor
+  const color = colorMode === 'accent' ? accent : fc.body
+  const labelMode = data.style.contactLabels
+  const label = labelMode === 'auto' ? (auto.label ?? '') : labelMode === 'none' ? '' : CONTACT_LABELS[labelMode][kind]
+  const labelColor = labelMode === 'auto' ? (auto.labelColor ?? fc.muted) : fc.muted
+
+  const href = kind === 'email' ? `mailto:${value}`
+    : kind === 'website' ? `https://${value.replace(/^https?:\/\//, '')}`
+    : `tel:${value}`
+  const target = kind === 'website' ? ' target="_blank" rel="noopener noreferrer"' : ''
+  const link = `<a href="${href}"${target} style="color:${color};text-decoration:none;">${value}</a>`
+  return label ? `<span style="color:${labelColor};">${label}&nbsp;</span>${link}` : link
+}
+
 // ─── Social icons ─────────────────────────────────────────────────────────────
 
 const SVG_ICONS: Record<string, (color: string) => string> = {

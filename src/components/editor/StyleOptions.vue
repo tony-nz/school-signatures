@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useSignatureStore } from '../../stores/signature'
-import type { FontFamily, FontSize, DividerStyle, SocialStyle } from '../../types'
+import type { FontFamily, FontSize, DividerStyle, SocialStyle, ContactColor, ContactLabels } from '../../types'
 
 const store = useSignatureStore()
 
@@ -20,6 +20,18 @@ const socialStyles: { value: SocialStyle; label: string }[] = [
   { value: 'icons', label: 'Icons' },
   { value: 'text', label: 'Text' },
   { value: 'both', label: 'Both' },
+]
+// Auto keeps each template's own look
+const contactColors: { value: ContactColor; label: string }[] = [
+  { value: 'auto', label: 'Auto' },
+  { value: 'accent', label: 'Accent' },
+  { value: 'text', label: 'Text' },
+]
+const contactLabels: { value: ContactLabels; label: string }[] = [
+  { value: 'auto', label: 'Auto' },
+  { value: 'none', label: 'None' },
+  { value: 'letters', label: 'E:' },
+  { value: 'words', label: 'Email:' },
 ]
 </script>
 
@@ -58,6 +70,22 @@ const socialStyles: { value: SocialStyle; label: string }[] = [
       <div class="btn-group">
         <button v-for="d in dividers" :key="d.value" @click="store.data.style.dividerStyle = d.value"
           :class="store.data.style.dividerStyle === d.value ? 'active' : ''" class="seg-btn">{{ d.label }}</button>
+      </div>
+    </div>
+
+    <!-- Contact details: link colour and labels for email, phone, mobile and website -->
+    <div class="field">
+      <label>Contact Colour</label>
+      <div class="btn-group">
+        <button v-for="c in contactColors" :key="c.value" @click="store.data.style.contactColor = c.value"
+          :class="store.data.style.contactColor === c.value ? 'active' : ''" class="seg-btn">{{ c.label }}</button>
+      </div>
+    </div>
+    <div class="field">
+      <label>Contact Labels</label>
+      <div class="btn-group">
+        <button v-for="c in contactLabels" :key="c.value" @click="store.data.style.contactLabels = c.value"
+          :class="store.data.style.contactLabels === c.value ? 'active' : ''" class="seg-btn">{{ c.label }}</button>
       </div>
     </div>
 

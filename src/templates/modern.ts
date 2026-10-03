@@ -1,5 +1,5 @@
 import type { SignatureTemplate, SignatureData } from '../types'
-import { fontCss, fontSizePx, avatarRadiusCss, avatarDimPx, logoSizing, logoRadiusCss, dividerHtml, renderSocials, ctaHtml, meetingHtml, disclaimerHtml, resolveColors, addressHtml, padImage } from './helpers'
+import { contactHtml, fontCss, fontSizePx, avatarRadiusCss, avatarDimPx, logoSizing, logoRadiusCss, dividerHtml, renderSocials, ctaHtml, meetingHtml, disclaimerHtml, resolveColors, addressHtml, padImage } from './helpers'
 
 export const modernTemplate: SignatureTemplate = {
   id: 'modern',
@@ -41,10 +41,10 @@ export const modernTemplate: SignatureTemplate = {
         ${metaParts.length ? `<tr><td style="font-size:${sz.meta}px;color:${fc.title};padding-top:1px;">${metaParts.join(' &bull; ')}</td></tr>` : ''}
         ${data.tagline ? `<tr><td style="font-size:${sz.meta}px;color:${color};font-style:italic;padding-top:1px;">${data.tagline}</td></tr>` : ''}
         ${dividerHtml(data, color)}
-        ${data.email ? `<tr><td style="padding-top:5px;font-size:${sz.base}px;"><a href="mailto:${data.email}" style="color:${color};text-decoration:none;">${data.email}</a></td></tr>` : ''}
-        ${data.phone ? `<tr><td style="font-size:${sz.base}px;"><a href="tel:${data.phone}" style="color:${fc.body};text-decoration:none;">${data.phone}</a></td></tr>` : ''}
-        ${data.mobile ? `<tr><td style="font-size:${sz.base}px;color:${fc.title};">M: <a href="tel:${data.mobile}" style="color:${fc.body};text-decoration:none;">${data.mobile}</a></td></tr>` : ''}
-        ${data.website ? `<tr><td style="font-size:${sz.base}px;"><a href="https://${data.website.replace(/^https?:\/\//, '')}" target="_blank" rel="noopener noreferrer" style="color:${color};text-decoration:none;">${data.website}</a></td></tr>` : ''}
+        ${data.email ? `<tr><td style="padding-top:5px;font-size:${sz.base}px;">${contactHtml(data, 'email', color)}</td></tr>` : ''}
+        ${data.phone ? `<tr><td style="font-size:${sz.base}px;">${contactHtml(data, 'phone', color)}</td></tr>` : ''}
+        ${data.mobile ? `<tr><td style="font-size:${sz.base}px;">${contactHtml(data, 'mobile', color, { label: 'M:', labelColor: fc.title })}</td></tr>` : ''}
+        ${data.website ? `<tr><td style="font-size:${sz.base}px;">${contactHtml(data, 'website', color)}</td></tr>` : ''}
         ${data.address ? `<tr><td style="font-size:${sz.small}px;color:${fc.muted};">${addressHtml(data, fc.muted)}</td></tr>` : ''}
         ${meetingHtml(data, color)}
         ${renderSocials(data, color)}

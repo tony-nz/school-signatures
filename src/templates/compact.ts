@@ -1,5 +1,5 @@
 import type { SignatureTemplate, SignatureData } from '../types'
-import { fontCss, fontSizePx, logoSizing, logoRadiusCss, renderSocials, ctaHtml, meetingHtml, disclaimerHtml, resolveColors, addressHtml, padImage } from './helpers'
+import { contactHtml, fontCss, fontSizePx, logoSizing, logoRadiusCss, renderSocials, ctaHtml, meetingHtml, disclaimerHtml, resolveColors, addressHtml, padImage } from './helpers'
 
 export const compactTemplate: SignatureTemplate = {
   id: 'compact',
@@ -16,11 +16,9 @@ export const compactTemplate: SignatureTemplate = {
     if (data.title) parts.push(`<span style="color:${fc.title};">${data.title}</span>`)
     if (data.company) parts.push(`<span style="color:${color};font-weight:600;">${data.company}</span>`)
 
-    const contacts: string[] = []
-    if (data.email) contacts.push(`<a href="mailto:${data.email}" style="color:${color};text-decoration:none;">${data.email}</a>`)
-    if (data.phone) contacts.push(`<a href="tel:${data.phone}" style="color:${fc.body};text-decoration:none;">${data.phone}</a>`)
-    if (data.mobile) contacts.push(`<a href="tel:${data.mobile}" style="color:${fc.body};text-decoration:none;">${data.mobile}</a>`)
-    if (data.website) contacts.push(`<a href="https://${data.website.replace(/^https?:\/\//, '')}" target="_blank" rel="noopener noreferrer" style="color:${color};text-decoration:none;">${data.website}</a>`)
+    const contacts = (['email', 'phone', 'mobile', 'website'] as const)
+      .map((kind) => contactHtml(data, kind, color))
+      .filter(Boolean)
 
     const logoHtml = (data.visibility.logo && data.logo)
       ? (() => { const ls = logoSizing(data); return `<tr><td style="padding-top:6px;">${padImage(`<img src="${data.logo}" ${ls.attrs} style="display:block;${ls.css}object-fit:contain;border-radius:${logoRadiusCss(data)};" />`, data.style.logoPaddingPx)}</td></tr>` })()

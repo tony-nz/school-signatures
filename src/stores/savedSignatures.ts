@@ -58,24 +58,35 @@ export const useSavedSignaturesStore = defineStore('savedSignatures', () => {
 
   // Remember which saved signature is open, per account, so a page refresh keeps it selected.
   // (The editor contents themselves survive via the editor's local auto-save.)
+  // Stored as "null" while working on an unsaved draft, so that isn't mistaken for a first visit.
   const storageKey = () => `saved-signature-current:${useAuthStore().user?.id ?? ''}`
 
   watch(current, (value) => {
     if (!useAuthStore().user) return
     try {
-      if (value) localStorage.setItem(storageKey(), JSON.stringify(value))
-      else localStorage.removeItem(storageKey())
+      localStorage.setItem(storageKey(), JSON.stringify(value))
     } catch { /* storage unavailable */ }
   }, { deep: true })
 
   function restoreCurrent() {
     let sig: SavedSignature | undefined
+    let firstVisit = false
     try {
       const raw = localStorage.getItem(storageKey())
-      const stored = raw ? JSON.parse(raw) as { id: string } : null
+      firstVisit = raw === null
+      const stored = raw ? JSON.parse(raw) as { id: string } | null : null
       // Only restore if it still exists (it may have been deleted on another device)
       sig = stored ? list.value.find((s) => s.id === stored.id) : undefined
     } catch { /* storage unavailable or corrupt */ }
+
+    // First visit on this device: open the most recent saved signature rather than the demo,
+    // which only shows when the account has no signatures yet
+    if (firstVisit && list.value.length) {
+      const first = list.value[0]
+      useSignatureStore().loadSignature(first.data, first.templateId)
+      current.value = { id: first.id, name: first.name }
+      return
+    }
 
     // Fallback: if nothing was remembered, select the saved signature identical to the editor
     if (!sig) {

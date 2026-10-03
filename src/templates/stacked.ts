@@ -1,5 +1,5 @@
 import type { SignatureTemplate, SignatureData } from '../types'
-import { fontCss, fontSizePx, avatarRadiusCss, avatarDimPx, logoSizing, logoRadiusCss, dividerHtml, renderSocials, ctaHtml, meetingHtml, disclaimerHtml, resolveColors, addressHtml, padImage } from './helpers'
+import { contactHtml, fontCss, fontSizePx, avatarRadiusCss, avatarDimPx, logoSizing, logoRadiusCss, dividerHtml, renderSocials, ctaHtml, meetingHtml, disclaimerHtml, resolveColors, addressHtml, padImage } from './helpers'
 
 export const stackedTemplate: SignatureTemplate = {
   id: 'stacked',
@@ -26,11 +26,9 @@ export const stackedTemplate: SignatureTemplate = {
       ? `<td style="padding-right:16px;vertical-align:top;">${leftParts.join('')}</td>`
       : ''
 
-    const contacts: string[] = []
-    if (data.email) contacts.push(`<a href="mailto:${data.email}" style="color:${fc.body};text-decoration:none;">${data.email}</a>`)
-    if (data.phone) contacts.push(`<a href="tel:${data.phone}" style="color:${fc.body};text-decoration:none;">${data.phone}</a>`)
-    if (data.mobile) contacts.push(`<a href="tel:${data.mobile}" style="color:${fc.body};text-decoration:none;">${data.mobile}</a>`)
-    if (data.website) contacts.push(`<a href="https://${data.website.replace(/^https?:\/\//, '')}" target="_blank" rel="noopener noreferrer" style="color:${fc.body};text-decoration:none;">${data.website}</a>`)
+    const contacts = (['email', 'phone', 'mobile', 'website'] as const)
+      .map((kind) => contactHtml(data, kind, color, { color: 'text' }))
+      .filter(Boolean)
     const contactLine = contacts.join(' <span style="color:#d1d5db;"> | </span> ')
 
     return `

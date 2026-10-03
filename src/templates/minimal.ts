@@ -1,5 +1,5 @@
 import type { SignatureTemplate, SignatureData } from '../types'
-import { fontCss, fontSizePx, logoSizing, logoRadiusCss, dividerHtml, renderSocials, ctaHtml, meetingHtml, disclaimerHtml, resolveColors, addressHtml, padImage } from './helpers'
+import { contactHtml, fontCss, fontSizePx, logoSizing, logoRadiusCss, dividerHtml, renderSocials, ctaHtml, meetingHtml, disclaimerHtml, resolveColors, addressHtml, padImage } from './helpers'
 
 export const minimalTemplate: SignatureTemplate = {
   id: 'minimal',
@@ -17,12 +17,9 @@ export const minimalTemplate: SignatureTemplate = {
       data.company ? data.company : '',
     ].filter(Boolean).join(' &middot; ')
 
-    const contactLine = [
-      data.email ? `<a href="mailto:${data.email}" style="color:${color};text-decoration:none;">${data.email}</a>` : '',
-      data.phone ? `<a href="tel:${data.phone}" style="color:${fc.body};text-decoration:none;">${data.phone}</a>` : '',
-      data.mobile ? `<a href="tel:${data.mobile}" style="color:${fc.body};text-decoration:none;">${data.mobile}</a>` : '',
-      data.website ? `<a href="https://${data.website.replace(/^https?:\/\//, '')}" target="_blank" rel="noopener noreferrer" style="color:${color};text-decoration:none;">${data.website}</a>` : '',
-    ].filter(Boolean).join(' &nbsp;&middot;&nbsp; ')
+    const contactLine = (['email', 'phone', 'mobile', 'website'] as const)
+      .map((kind) => contactHtml(data, kind, color))
+      .filter(Boolean).join(' &nbsp;&middot;&nbsp; ')
 
     const logoHtml = (data.visibility.logo && data.logo)
       ? (() => { const ls = logoSizing(data); return `<tr><td style="padding-top:8px;">${padImage(`<img src="${data.logo}" ${ls.attrs} style="display:block;${ls.css}object-fit:contain;border-radius:${logoRadiusCss(data)};" />`, data.style.logoPaddingPx)}</td></tr>` })()

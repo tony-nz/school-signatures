@@ -1,5 +1,5 @@
 import type { SignatureTemplate, SignatureData } from '../types'
-import { fontCss, fontSizePx, avatarRadiusCss, avatarDimPx, logoSizing, logoRadiusCss, renderSocials, ctaHtml, meetingHtml, disclaimerHtml, resolveColors, addressHtml, padImage } from './helpers'
+import { contactHtml, fontCss, fontSizePx, avatarRadiusCss, avatarDimPx, logoSizing, logoRadiusCss, renderSocials, ctaHtml, meetingHtml, disclaimerHtml, resolveColors, addressHtml, padImage } from './helpers'
 
 export const corporateTemplate: SignatureTemplate = {
   id: 'corporate',
@@ -36,10 +36,10 @@ export const corporateTemplate: SignatureTemplate = {
         ${data.company ? `<tr><td style="font-size:${sz.meta}px;color:${fc.title};">${data.company}</td></tr>` : ''}
         ${data.tagline ? `<tr><td style="font-size:${sz.meta}px;color:${fc.muted};font-style:italic;">${data.tagline}</td></tr>` : ''}
         <tr><td style="height:6px;"></td></tr>
-        ${data.phone ? `<tr><td style="font-size:${sz.base}px;"><span style="color:${fc.muted};">T:&nbsp;</span><a href="tel:${data.phone}" style="color:${fc.body};text-decoration:none;">${data.phone}</a></td></tr>` : ''}
-        ${data.mobile ? `<tr><td style="font-size:${sz.base}px;"><span style="color:${fc.muted};">M:&nbsp;</span><a href="tel:${data.mobile}" style="color:${fc.body};text-decoration:none;">${data.mobile}</a></td></tr>` : ''}
-        ${data.email ? `<tr><td style="font-size:${sz.base}px;"><span style="color:${fc.muted};">E:&nbsp;</span><a href="mailto:${data.email}" style="color:${color};text-decoration:none;">${data.email}</a></td></tr>` : ''}
-        ${data.website ? `<tr><td style="font-size:${sz.base}px;"><span style="color:${fc.muted};">W:&nbsp;</span><a href="https://${data.website.replace(/^https?:\/\//, '')}" target="_blank" rel="noopener noreferrer" style="color:${color};text-decoration:none;">${data.website}</a></td></tr>` : ''}
+        ${([['phone', 'T:'], ['mobile', 'M:'], ['email', 'E:'], ['website', 'W:']] as const).map(([kind, label]) => {
+          const html = contactHtml(data, kind, color, { label })
+          return html ? `<tr><td style="font-size:${sz.base}px;">${html}</td></tr>` : ''
+        }).join('')}
         ${data.address ? `<tr><td style="font-size:${sz.small}px;color:${fc.muted};padding-top:3px;">${addressHtml(data, fc.muted)}</td></tr>` : ''}
         ${meetingHtml(data, color)}
         ${renderSocials(data, color)}
